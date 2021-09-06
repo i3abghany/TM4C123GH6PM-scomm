@@ -1,5 +1,12 @@
 #include "CAN.h"
 
+/*
+ * An internal helper to configure the GPIO pins related to a parameter CAN
+ * controller.
+ *
+ * CAN0 can be configured to operate in three pairs of pins, this implementation
+ * only uses one pair (RX/TX) in PORT B pins 4 and 5.
+ */
 static void CAN_GPIO_init(enum CAN c)
 {
     /*  The peripheral clock must be enabled using the RCGC0 register */
@@ -22,6 +29,34 @@ static void CAN_GPIO_init(enum CAN c)
         GPIOAPCTL  |= CAN1_PCTL;
     }
 }
+
+/*
+ * Calculate the CANBIT register value for a particular bitrate and propagation
+ * time.
+ *
+ * In the CAN specification, bit-time is divided into four parts.
+ *
+ *  1. Synchronization segment
+ *  2. Propagation segment
+ *  3. Phase buffer segment 1
+ *  4. Phase buffer segment 2
+ *
+ *  Segment consist of a specific, programmable number of time quanta.
+ *
+ *  The time quantum is calculated using the following formula.
+ *
+ *      Time quantum = F_CLK / BRP.
+ *
+ *  Where F_CLK is the routed clock to the CAN controller.
+ *  BRP is the bit-rate prescalar.
+ *
+ *  * Synchronization segment is fixed at one time quantum.
+ *  * Propagation segment is parameterized by the physical system delay.
+ *  * Phase buffers surround the sample point of the bit.
+ *
+ *  Propagation segment is provided by the user. It can be defaulted to 2 time
+ *  quanta.
+ */
 
 static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
 {
@@ -83,6 +118,16 @@ static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
     return CONSTRUCT_CANBIT(tTSeg2, tTSeg1, tSJW, tBRP);
 }
 
+/*
+ * When the INIT bit in the CANCTL register is set, the operation of the CAN is
+ * halted.
+ *
+ * all message transfers to and from the CAN bus are stopped and the CANnTX
+ * signal is held High. Entering the initialization state does not change the
+ * configuration of the CAN controller, the message objects, or the error
+ * counters. However, some configuration registers are only accessible while in
+ * the initialization state.
+ */
 void CAN_disable(enum CAN c)
 {
     uint32_t CAN_BASE_ADDR = (uint32_t)(c);
@@ -313,7 +358,7 @@ static inline void CAN_memcpy(void *dst, void *src, uint8_t n)
     }
 }
 
-static void CAN_write_data_to_reg(uint32_t CAN_BASE_ADDR, uint8_t *data, uint8_t len)
+static bool CAN_write_data_to_reg(uint32_t CAN_BASE_ADDR, uint8_t *data, uint8_t len)
 {
     /*
      * Since The data registers are laid-out in memory as a contiguous map,
@@ -452,7 +497,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
      */
 
     if (CAN_is_transmit_type(msg->msg_type)) {
-        CAN_write_data_to_reg(c, msg->data, msg->data_len);
+        CAN_write_data_to_reg(c, msg->data, (msg->data_len & CANIF1MCTL_DLC_MASK));
     }
 
     /*
