@@ -5,7 +5,7 @@
 #include "CANMap.h"
 
 #ifndef F_SYS_CLOCK
-    #define F_SYS_CLOCK 50000000
+    #define F_SYS_CLOCK 25000000
 #endif
 
 enum CAN {
@@ -13,20 +13,20 @@ enum CAN {
     CAN1 = CAN1_BASE_ADDR
 };
 
-struct CANConfig {
+typedef struct {
     enum CAN can_num;
     uint32_t bit_rate;
     int8_t prop_time;
-};
+} CANConfig;
 
-enum MsgObjectType {
+typedef enum {
     CAN_MSG_OBJ_TYPE_RX,
     CAN_MSG_OBJ_TYPE_RX_REMOTE,
     CAN_MSG_OBJ_TYPE_TX,
     CAN_MSG_OBJ_TYPE_TX_REMOTE
-};
+} MsgObjectType;
 
-struct CANMsgObject {
+typedef struct {
     /* Controller message object ID. */
     uint32_t obj_id;
 
@@ -38,8 +38,8 @@ struct CANMsgObject {
     uint32_t flags;
     uint8_t data_len;
     uint8_t *data;
-    enum MsgObjectType msg_type;
-};
+    MsgObjectType msg_type;
+} CANMsgObject;
 
 #define CAN0_RCGC0_OFFSET 24
 #define CAN1_RCGC0_OFFSET 25
@@ -94,6 +94,7 @@ struct CANMsgObject {
 #define CANIF1MCTL_DLC_MASK        0x00000007
 #define CANIF1MCTL_EOB_MASK        0x00000080
 #define CANIF1MCTL_TXRQST_MASK     0x00000100
+#define CANIF1MCTL_RMTEN_MASK     0x00000200
 #define CANIF1MCTL_RXIE_MASK       0x00000400
 #define CANIF1MCTL_TXIE_MASK       0x00000800
 #define CANIF1MCTL_UMASK_MASK      0x00001000
@@ -150,7 +151,7 @@ struct CANMsgObject {
 
 void CAN_disable(enum CAN c);
 void CAN_enable(enum CAN c);
-bool CAN_init(struct CANConfig *cfg);
-bool CAN_config_message(enum CAN, struct CANMsgObject *msg);
+bool CAN_init(CANConfig *cfg);
+bool CAN_config_message(enum CAN, CANMsgObject *msg);
 
 #endif

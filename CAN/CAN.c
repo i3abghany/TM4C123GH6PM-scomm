@@ -29,12 +29,12 @@ static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
 
     /*
      * The bit time may consist of 4 to 25 time quanta.
-     * bit_time = time_quantum * n 
+     * bit_time = time_quantum * n
      */
     float time_quantum = bit_time / N_TIME_QUANTA;
 
     /*
-     * time_quantum = (BRP) / fsys 
+     * time_quantum = (BRP) / fsys
      * BRP = time_quantum * fsys
      */
     uint8_t tBRP = ((uint32_t)(time_quantum * F_SYS_CLOCK) & (0xFF));
@@ -53,7 +53,7 @@ static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
         return 0;
     }
 
-    /* tPhase1 = tPhase2 = 
+    /* tPhase1 = tPhase2 =
      *     (N_TIME_QUANTA - ((tProp / time_quantum) + (tSync / time_quantum))
      */
     uint8_t phases_time = N_TIME_QUANTA - (sync_time + prop_time);
@@ -95,10 +95,10 @@ void CAN_enable(enum CAN c)
     PTR(CAN_BASE_ADDR, CANCTL_OFFSET) &= ~CANCTL_INIT_MASK;
 }
 
-bool CAN_init(struct CANConfig *cfg)
+bool CAN_init(CANConfig *cfg)
 {
     CAN_GPIO_init(cfg->can_num);
-    
+
     uint32_t CAN_BASE_ADDR = (uint32_t)(cfg->can_num);
 
     /* Initialization is started by setting the INIT bit in the CANCTL register */
@@ -120,7 +120,7 @@ bool CAN_init(struct CANConfig *cfg)
     return true;
 }
 
-static void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t options)
+static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t options)
 {
     /* 1. In the CAN IFn Command Mask (CANIFnCMASK) register: */
 
@@ -134,8 +134,8 @@ static void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t options)
     if (options & CANIF1CMSK_WRNRD_MASK) {
         PTR(CAN_BASE_ADDR, CANIF1CMSK_OFFSET) |= CANIF1CMSK_WRNRD_MASK;
     }
-     
-    /* 
+
+    /*
      * specify whether to transfer the IDMASK, DIR, and MXTD of the message
      * object into the CAN IFn registers using the MASK bit
      */
@@ -187,52 +187,65 @@ static void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t options)
     }
 }
 
-static bool CAN_is_transmit_type(enum MsgObjectType type)
+static inline bool CAN_is_transmit_type(MsgObjectType type)
 {
     return type == CAN_MSG_OBJ_TYPE_TX_REMOTE || type == CAN_MSG_OBJ_TYPE_TX;
 }
 
-static bool CAN_config_message_type(uint32_t CAN_BASE_ADDR, enum MsgObjectType type, uint32_t flags)
+typedef struct {
+    uint32_t *CANIF1MSK1_value;
+    uint32_t *CANIF1MSK2_value;
+    uint32_t *CANIF1MCTL_value;
+    uint32_t *CANIF1ARB1_value;
+    uint32_t *CANIF1ARB2_value;
+    uint32_t  *CANIF1CRQ_value;
+} _CANRegsValues;
+
+static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
+        MsgObjectType type, uint32_t flags, _CANRegsValues *vals)
 {
    switch (type) {
     case CAN_MSG_OBJ_TYPE_RX:
 
         /* Reset the DIR bit to indicate RX. */
-        PTR(CAN_BASE_ADDR, CANIF1ARB2_OFFSET) &= ~(CANIF1ARB2_DIR_MASK);
+        *(vals->CANIF1ARB2_value) &= ~(CANIF1ARB2_DIR_MASK);
 
         /* Reset the TXRQST bit to indicate RX. */
-        PTR(CAN_BASE_ADDR, CANIF1MCTL_OFFSET) &= ~(CANIF1MCTL_TXRQST_MASK); 
+        *(vals->CANIF1MCTL_value) &= ~(CANIF1MCTL_TXRQST_MASK);
 
         /*
          * Optionally set the RXIE bit to enable the INTPND bit to be set after
-         * a successful receive. 
+         * a successful receive.
          */
-        if (flags & (CAN_MSG_OBJ_FLAG_TX_INT_ENABLED)) {
-            PTR(CAN_BASE_ADDR, CANIF1MCTL_OFFSET) |= CANIF1MCTL_TXIE_MASK;
+        if (flags & (CAN_MSG_OBJ_FLAG_RX_INT_ENABLED)) {
+            *(vals->CANIF1MCTL_value) |= CANIF1MCTL_RXIE_MASK;
         }
+
+        /* Clear the RMTEN bit to leave the TXRQST bit unchanged */
+        *(vals->CANIF1MCTL_value) &= ~CANIF1MCTL_RMTEN_MASK;
 
         break;
     case CAN_MSG_OBJ_TYPE_RX_REMOTE:
-        /* TODO: Handle remote frames... */
+        
 
         break;
     case CAN_MSG_OBJ_TYPE_TX:
 
         /* Set the DIR bit to indicate TX. */
-        PTR(CAN_BASE_ADDR, CANIF1ARB2_OFFSET) |= CANIF1ARB2_DIR_MASK;
+        *(vals->CANIF1ARB2_value) |= CANIF1ARB2_DIR_MASK;
 
         /*
          * Optionally set the TXIE bit to enable the INTPND bit to be set after
-         * a successful transmission 
+         * a successful transmission
          */
         if (flags & (CAN_MSG_OBJ_FLAG_TX_INT_ENABLED)) {
-            PTR(CAN_BASE_ADDR, CANIF1MCTL_OFFSET) |= CANIF1MCTL_TXIE_MASK;
+            *(vals->CANIF1MCTL_value) |= CANIF1MCTL_TXIE_MASK;
         }
 
         break;
     case CAN_MSG_OBJ_TYPE_TX_REMOTE:
         /* TODO: Handle remote frames... */
-        
+
         break;
 
     default:
@@ -241,7 +254,7 @@ static bool CAN_config_message_type(uint32_t CAN_BASE_ADDR, enum MsgObjectType t
 
     /* TODO: Handle FIFO. */
     /* For now, only single-frame messages are supported... */
-    PTR(CAN_BASE_ADDR, CANIF1MCTL_OFFSET) |= CANIF1MCTL_EOB_MASK;
+    *(vals->CANIF1MCTL_value) |= CANIF1MCTL_EOB_MASK;
 
     return true;
 }
@@ -263,7 +276,7 @@ static void CAN_write_data_to_reg(uint32_t CAN_BASE_ADDR, uint8_t *data, uint8_t
     CAN_memcpy((void *)(CAN_BASE_ADDR + CANIF1DA1_OFFSET), data, len);
 }
 
-bool CAN_config_message(enum CAN c, struct CANMsgObject *msg)
+bool CAN_config_message(enum CAN c, CANMsgObject *msg)
 {
     uint32_t CANIF1MSK1_value = 0;
     uint32_t CANIF1MSK2_value = 0;
@@ -274,12 +287,24 @@ bool CAN_config_message(enum CAN c, struct CANMsgObject *msg)
 
     uint32_t CAN_BASE_ADDR = (uint32_t)(c);
 
-    /* TODO: Should we allow the API user to specify those options? */
+    /*
+     * Since this is a message object configuration, we're writting to the
+     * messsage object. This means that the WRNRD bit must be set.
+     *
+     * WRNRD: Transfer the data in the CANIFn registers to the CAN message
+     * object specified by the MNUM field in the CAN Command Request (CANIFnCRQ)
+     *
+     * Potentially using all the data bytes from the message object, so
+     * setting the DATAA and DATAB bits.
+     *
+     * Transferring control bits from CANIFnMCTL to interface registers.
+     */
     CAN_config_CANIF1CMSK(c, CANIF1CMSK_WRNRD_MASK |
-                             CANIF1CMSK_ARB_MASK   |
+                             CANIF1CMSK_DATAA_MASK |
+                             CANIF1CMSK_DATAB_MASK |
                              CANIF1CMSK_CONTROL_MASK);
-    
-    bool use_extended_bit_id = ((msg->msg_id > CANIF1MSK1_ID_MASK) && 
+
+    bool use_extended_bit_id = ((msg->msg_id > CANIF1MSK1_ID_MASK) &&
                           (msg->flags & CAN_MSG_OBJ_FLAG_29_BIT_ID));
 
     /*
@@ -315,16 +340,16 @@ bool CAN_config_message(enum CAN c, struct CANMsgObject *msg)
 
     /*
      * Use the MXTD and MDIR bits to specify whether to use XTD and DIR for
-     * acceptance filtering. 
+     * acceptance filtering.
      */
-    if ((msg->flags & CAN_MSG_OBJ_FLAG_DIR_FILTER) 
+    if ((msg->flags & CAN_MSG_OBJ_FLAG_DIR_FILTER)
             == CAN_MSG_OBJ_FLAG_DIR_FILTER) {
-        CANIF1MSK2_value |= CANIF1MSK2_MDIR_MASK; 
+        CANIF1MSK2_value |= CANIF1MSK2_MDIR_MASK;
     }
 
-    if ((msg->flags & CAN_MSG_OBJ_FLAG_29_BIT_FILTER) 
+    if ((msg->flags & CAN_MSG_OBJ_FLAG_29_BIT_FILTER)
             == CAN_MSG_OBJ_FLAG_29_BIT_FILTER) {
-        CANIF1MSK2_value |= CANIF1MSK2_MXTD_MASK; 
+        CANIF1MSK2_value |= CANIF1MSK2_MXTD_MASK;
     }
 
     /* For a 29-bit identifier: */
@@ -332,7 +357,7 @@ bool CAN_config_message(enum CAN c, struct CANMsgObject *msg)
         /*
          * Configure ID[15:0] in the CANIFnARB1 register for bits [15:0] of the
          * message identifier and ID[12:0] in the CANIFnARB2 register for bits
-         * [28:16] of the message identifier. 
+         * [28:16] of the message identifier.
          */
         CANIF1ARB1_value |= (msg->msg_id & CANIF1ARB1_ID_MASK);
         CANIF1ARB2_value |= ((msg->msg_id >> 16) & (CANIF1ARB2_ID_MASK));
@@ -344,7 +369,7 @@ bool CAN_config_message(enum CAN c, struct CANMsgObject *msg)
         /* Set the MSGVAL bit to indicate that the message object is valid. */
         CANIF1ARB2_value |= CANIF1ARB2_MSGVAL_MASK;
     } else {
-        /* 
+        /*
          * For an 11-bit identifier, disregard the CANIFnARB1 register and
          * configure ID[12:2] in the CANIFnARB2 register for bits [10:0] of the
          * message identifier.
@@ -357,9 +382,19 @@ bool CAN_config_message(enum CAN c, struct CANMsgObject *msg)
         CANIF1ARB2_value |= CANIF1ARB2_MSGVAL_MASK;
     }
 
+    /* Configure the DLC[3:0] field to specify the size of the data frame. */
     CANIF1MCTL_value |= (msg->data_len & CANIF1MCTL_DLC_MASK);
 
-    if (!CAN_config_message_type(c, msg->msg_type, msg->flags)) {
+    _CANRegsValues current_vals = {
+        &CANIF1MSK1_value,
+        &CANIF1MSK2_value,
+        &CANIF1MCTL_value,
+        &CANIF1ARB1_value,
+        &CANIF1ARB2_value,
+        &CANIF1CRQ_value
+    };
+
+    if (!CAN_config_message_type(c, msg->msg_type, msg->flags, &current_vals)) {
         return false;
     }
 
@@ -382,7 +417,7 @@ bool CAN_config_message(enum CAN c, struct CANMsgObject *msg)
     /*
      * When everything is properly configured, set the TXRQST bit in the
      * CANIFnMCTL register. Once this bit is set, the message object is
-     * available to be transmitted, depending on priority and bus availability. 
+     * available to be transmitted, depending on priority and bus availability.
      */
     if (CAN_is_transmit_type(msg->msg_type)) {
         CANIF1MCTL_value |= CANIF1MCTL_TXRQST_MASK;
