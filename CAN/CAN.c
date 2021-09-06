@@ -189,7 +189,9 @@ static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t option
 
 static inline bool CAN_is_transmit_type(MsgObjectType type)
 {
-    return type == CAN_MSG_OBJ_TYPE_TX_REMOTE || type == CAN_MSG_OBJ_TYPE_TX;
+    return type == MSG_OBJ_TYPE_TX_REMOTE ||
+           type == MSG_OBJ_TYPE_TX        ||
+           type == MSG_OBJ_TYPE_RXTX_REMOTE;
 }
 
 typedef struct {
@@ -205,7 +207,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         MsgObjectType type, uint32_t flags, _CANRegsValues *vals)
 {
    switch (type) {
-    case CAN_MSG_OBJ_TYPE_RX:
+    case MSG_OBJ_TYPE_RX:
 
         /* Reset the DIR bit to indicate RX. */
         *(vals->CANIF1ARB2_value) &= ~(CANIF1ARB2_DIR_MASK);
@@ -225,11 +227,19 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         *(vals->CANIF1MCTL_value) &= ~CANIF1MCTL_RMTEN_MASK;
 
         break;
-    case CAN_MSG_OBJ_TYPE_RX_REMOTE:
-        
+    case MSG_OBJ_TYPE_RX_REMOTE:
+
+        /* Set the DIR bit to indicate TX. */
+        *(vals->CANIF1ARB2_value) |= CANIF1ARB2_DIR_MASK;
+
+        /* 
+         * Enable acceptance filtering using MSK, MXTD, MDIR bits in
+         * CANIF*MSK* registers. 
+         */
+        *(vals->CANIF1MCTL_value) |= CANIF1MCTL_UMASK_MASK;
 
         break;
-    case CAN_MSG_OBJ_TYPE_TX:
+    case MSG_OBJ_TYPE_TX:
 
         /* Set the DIR bit to indicate TX. */
         *(vals->CANIF1ARB2_value) |= CANIF1ARB2_DIR_MASK;
@@ -243,10 +253,43 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         }
 
         break;
-    case CAN_MSG_OBJ_TYPE_TX_REMOTE:
-        /* TODO: Handle remote frames... */
-
+    case MSG_OBJ_TYPE_TX_REMOTE:
+        /* 
+         * Set the TXRQST bit so that the transmission request is fired
+         * immediately. We do this outside this function.
+         */
         break;
+
+    case MSG_OBJ_TYPE_RXTX_REMOTE:
+    /* CAN remote frame receive remote, then transmit message object. */
+
+       /*
+        * At the reception of a matching remote frame, the TXRQST bit of this
+        * message object is set. The rest of the message object remains
+        * unchanged, and the controller automatically transfers the data in the
+        * message object as soon as possible
+        *
+        *
+        */ 
+
+        /* 
+         * DIR = 1 (direction = transmit); programmed in the CANIFnARB2 register
+         */
+        *(vals->CANIF1ARB2_value) |= CANIF1ARB2_DIR_MASK;
+
+        /* 
+         * RMTEN = 1 (set the TXRQST bit of the CANIFnMCTL register at reception
+         * of the frame to enable transmission)
+         */
+        *(vals->CANIF1MCTL_value) |= CANIF1MCTL_RMTEN_MASK;
+
+
+        /* 
+         * UMASK = 1 or 0
+         * 
+         * We set it to 1 so that any further ID arbitration is enabled.
+         */
+        *(vals->CANIF1MCTL_value) |= CANIF1MCTL_UMASK_MASK;
 
     default:
         return false;

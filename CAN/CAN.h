@@ -20,10 +20,11 @@ typedef struct {
 } CANConfig;
 
 typedef enum {
-    CAN_MSG_OBJ_TYPE_RX,
-    CAN_MSG_OBJ_TYPE_RX_REMOTE,
-    CAN_MSG_OBJ_TYPE_TX,
-    CAN_MSG_OBJ_TYPE_TX_REMOTE
+    MSG_OBJ_TYPE_RX,
+    MSG_OBJ_TYPE_RX_REMOTE,
+    MSG_OBJ_TYPE_TX,
+    MSG_OBJ_TYPE_TX_REMOTE,
+    MSG_OBJ_TYPE_RXTX_REMOTE
 } MsgObjectType;
 
 typedef struct {
@@ -102,6 +103,7 @@ typedef struct {
 
 /*           CANIF1ARB* fields and flags             */
 #define CANIF1ARB1_ID_MASK         0x0000FFFF
+
 #define CANIF1ARB2_ID_MASK         0x00001FFF
 #define CANIF1ARB2_DIR_MASK        0x00002000
 #define CANIF1ARB2_XTD_MASK        0x00004000
