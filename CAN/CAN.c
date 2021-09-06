@@ -219,7 +219,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
          * Optionally set the RXIE bit to enable the INTPND bit to be set after
          * a successful receive.
          */
-        if (flags & (CAN_MSG_OBJ_FLAG_RX_INT_ENABLED)) {
+        if (flags & (MSG_OBJ_RX_INT_ENABLED)) {
             *(vals->CANIF1MCTL_value) |= CANIF1MCTL_RXIE_MASK;
         }
 
@@ -248,7 +248,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
          * Optionally set the TXIE bit to enable the INTPND bit to be set after
          * a successful transmission
          */
-        if (flags & (CAN_MSG_OBJ_FLAG_TX_INT_ENABLED)) {
+        if (flags & MSG_OBJ_TX_INT_ENABLED) {
             *(vals->CANIF1MCTL_value) |= CANIF1MCTL_TXIE_MASK;
         }
 
@@ -295,9 +295,13 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         return false;
     }
 
-    /* TODO: Handle FIFO. */
-    /* For now, only single-frame messages are supported... */
-    *(vals->CANIF1MCTL_value) |= CANIF1MCTL_EOB_MASK;
+   /*
+    * Is the message a part of a FIFO structure and not the last message in a
+    * sequence? If so, do not set the EOB bit in the MCTL register. 
+    */
+   if ((flags & MSG_OBJ_FIFO) == 0) {
+        *(vals->CANIF1MCTL_value) |= CANIF1MCTL_EOB_MASK;
+   }
 
     return true;
 }
@@ -348,7 +352,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
                              CANIF1CMSK_CONTROL_MASK);
 
     bool use_extended_bit_id = ((msg->msg_id > CANIF1MSK1_ID_MASK) &&
-                          (msg->flags & CAN_MSG_OBJ_FLAG_29_BIT_ID));
+                          (msg->flags & MSG_OBJ_EXTENDED_ID));
 
     /*
      * In the CANIFnMSK1 register, use the MSK[15:0] bits to specify which of
@@ -360,7 +364,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
      * acceptance filtering
      *
      */
-    if (msg->flags & (CAN_MSG_OBJ_FLAG_ID_FILTER)) {
+    if (msg->flags & (MSG_OBJ_USE_ID_FILTER)) {
         if (use_extended_bit_id) {
             CANIF1MSK1_value |= (msg->msg_id & CANIF1MSK1_ID_MASK);
             CANIF1MSK2_value |= (msg->msg_id >> 16);
@@ -373,8 +377,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
      * In order for these bits to be used for acceptance filtering, they must be
      * enabled by setting the UMASK bit in the CANIFnMCTL register
      */
-    if (msg->flags & (CAN_MSG_OBJ_FLAG_ID_FILTER |
-                CAN_MSG_OBJ_FLAG_29_BIT_FILTER)) {
+    if (msg->flags & (MSG_OBJ_USE_ID_FILTER | MSG_OBJ_USE_EXT_FILTER)) {
         CANIF1MCTL_value |= CANIF1MCTL_UMASK_MASK;
 
         /* Send the filtering mask to the message object. */
@@ -385,13 +388,11 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
      * Use the MXTD and MDIR bits to specify whether to use XTD and DIR for
      * acceptance filtering.
      */
-    if ((msg->flags & CAN_MSG_OBJ_FLAG_DIR_FILTER)
-            == CAN_MSG_OBJ_FLAG_DIR_FILTER) {
+    if ((msg->flags & MSG_OBJ_USE_DIR_FILTER) == MSG_OBJ_USE_DIR_FILTER) {
         CANIF1MSK2_value |= CANIF1MSK2_MDIR_MASK;
     }
 
-    if ((msg->flags & CAN_MSG_OBJ_FLAG_29_BIT_FILTER)
-            == CAN_MSG_OBJ_FLAG_29_BIT_FILTER) {
+    if ((msg->flags & MSG_OBJ_USE_EXT_FILTER) == MSG_OBJ_USE_EXT_FILTER) {
         CANIF1MSK2_value |= CANIF1MSK2_MXTD_MASK;
     }
 
@@ -424,6 +425,9 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
          */
         CANIF1ARB2_value |= CANIF1ARB2_MSGVAL_MASK;
     }
+
+    /* Pass the arbitration bits to the message objects */
+    CAN_config_CANIF1CMSK(c, CANIF1CMSK_ARB_MASK);
 
     /* Configure the DLC[3:0] field to specify the size of the data frame. */
     CANIF1MCTL_value |= (msg->data_len & CANIF1MCTL_DLC_MASK);

@@ -121,33 +121,40 @@ typedef struct {
 /*              Message Object Flags                */
 
 /* Indicates that transmit interrupts enabled. */
-#define CAN_MSG_OBJ_FLAG_TX_INT_ENABLED  0x00000001
+#define MSG_OBJ_TX_INT_ENABLED  0x00000001
 
 /* Indicates that receive interrupts enabled. */
-#define CAN_MSG_OBJ_FLAG_RX_INT_ENABLED  0x00000002
+#define MSG_OBJ_RX_INT_ENABLED  0x00000002
 
 /* The message object uses the extended ID with 29 bits. */
-#define CAN_MSG_OBJ_FLAG_29_BIT_ID       0x00000004
+#define MSG_OBJ_EXTENDED_ID     0x00000004
 
-/* Acceptance filter using the ID. */
-#define CAN_MSG_OBJ_FLAG_ID_FILTER       0x00000008
+/* Using the standard ID as an acceptance filter. */
+#define MSG_OBJ_USE_ID_FILTER   0x00000008
 
 /*
  * Acceptance filter using the DIR field in the message object. This acceptance
  * filter also implies the usage of the ID filter.
  */
-#define CAN_MSG_OBJ_FLAG_DIR_FILTER     (0x00000010 | CAN_MSG_OBJ_FLAG_ID_FILTER)
+#define MSG_OBJ_USE_DIR_FILTER  (0x00000010 | MSG_OBJ_USE_ID_FILTER)
 
 /* 
  * Use the extened ID as an acceptance filter. This filter implies the usage of
  * the standard ID acceptance filter.
  */
-#define CAN_MSG_OBJ_FLAG_29_BIT_FILTER  (0x00000020 | CAN_MSG_OBJ_FLAG_ID_FILTER)
+#define MSG_OBJ_USE_EXT_FILTER  (0x00000020 | MSG_OBJ_USE_ID_FILTER)
+
+/* This message object is part of a FIFO structure. */
+#define MSG_OBJ_FIFO            0x00000040
+
+/* Indicates new data is available for the message object. */
+#define MSG_OBJ_NEW_DATA        0x00000080
+
+/* This message object is part of a FIFO structure. */
+#define MSG_OBJ_NO_FLAGS        0x00000000
 
 /* Implies that the message object is a remote frame. */
-#define CAN_MSG_OBJ_FLAG_REMOTE_FRAME    0x00000040
-
-#define CAN_11_BIT_ID_MASK 0x000007FF
+#define MSG_OBJ_REMOTE_FRAME    0x00000040
 
 #define min(x, y) ((x) < (y)) ? (x) : (y)
 
