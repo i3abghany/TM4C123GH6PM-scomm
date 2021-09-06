@@ -84,7 +84,11 @@ static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
      */
     uint8_t prop_time = cfg_prop_time == 0 ? 2 : cfg_prop_time;
 
-    if (cfg_prop_time > N_TIME_QUANTA) {
+    /*
+     * With 1 time quantum for Sync, and at least 2 for Phase1 and Phase2, we
+     * must have prop_time at least as small as N_TIME_QUANTA - 3.
+     */
+    if (cfg_prop_time > N_TIME_QUANTA - 3) {
         return 0;
     }
 
@@ -277,9 +281,9 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         /* Set the DIR bit to indicate TX. */
         *(vals->CANIF1ARB2_value) |= CANIF1ARB2_DIR_MASK;
 
-        /* 
+        /*
          * Enable acceptance filtering using MSK, MXTD, MDIR bits in
-         * CANIF*MSK* registers. 
+         * CANIF*MSK* registers.
          */
         *(vals->CANIF1MCTL_value) |= CANIF1MCTL_UMASK_MASK;
 
@@ -299,7 +303,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
 
         break;
     case MSG_OBJ_TYPE_TX_REMOTE:
-        /* 
+        /*
          * Set the TXRQST bit so that the transmission request is fired
          * immediately. We do this outside this function.
          */
@@ -315,23 +319,23 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         * message object as soon as possible
         *
         *
-        */ 
+        */
 
-        /* 
+        /*
          * DIR = 1 (direction = transmit); programmed in the CANIFnARB2 register
          */
         *(vals->CANIF1ARB2_value) |= CANIF1ARB2_DIR_MASK;
 
-        /* 
+        /*
          * RMTEN = 1 (set the TXRQST bit of the CANIFnMCTL register at reception
          * of the frame to enable transmission)
          */
         *(vals->CANIF1MCTL_value) |= CANIF1MCTL_RMTEN_MASK;
 
 
-        /* 
+        /*
          * UMASK = 1 or 0
-         * 
+         *
          * We set it to 1 so that any further ID arbitration is enabled.
          */
         *(vals->CANIF1MCTL_value) |= CANIF1MCTL_UMASK_MASK;
@@ -342,7 +346,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
 
    /*
     * Is the message a part of a FIFO structure and not the last message in a
-    * sequence? If so, do not set the EOB bit in the MCTL register. 
+    * sequence? If so, do not set the EOB bit in the MCTL register.
     */
    if ((flags & MSG_OBJ_FIFO) == 0) {
         *(vals->CANIF1MCTL_value) |= CANIF1MCTL_EOB_MASK;
@@ -378,6 +382,11 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
     uint32_t CANIF1CRQ_value  = 0;
 
     uint32_t CAN_BASE_ADDR = (uint32_t)(c);
+
+    /* Only allow *correct* message object ids. */
+    if (msg->obj_id > 32 || msg->obj_id == 0) {
+        return false;
+    }
 
     /*
      * Since this is a message object configuration, we're writting to the
@@ -504,7 +513,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
      * Program the number of the message object to be transmitted in the MNUM
      * field in the CAN IFn Command Request (CANIFnCRQ)
      */
-    CANIF1CRQ_value |= (msg->msg_id & CANIF1CRQ_MNUM_MASK);
+    CANIF1CRQ_value |= (msg->obj_id & CANIF1CRQ_MNUM_MASK);
 
     /*
      * When everything is properly configured, set the TXRQST bit in the

@@ -36,9 +36,29 @@ typedef struct {
 
     /* Used by the message handler in acceptance filtering */
     uint32_t msg_id_mask;
+
+    /* Message flags used to set various attributes for the message box. */
     uint32_t flags;
+
+    /*
+     * The length of the data (if any). The length is masked to leave at most 4
+     * bits which is the max-length of the DLC field in the CANIF*MCTL register.
+     *
+     * Even if the value is > 8, 8-bytes will be used.
+     */
     uint8_t data_len;
+
+    /* A pointer to the actual data that will reside inside the message object
+     * (if applicable.)
+     *
+     * Can be left as NULL if the message object shall not contain data.
+     */
     uint8_t *data;
+
+    /* The type of the message object. Either transmission or receiving, either
+     * remote of data frame, and whether to use automatic transmission of remote
+     * requests.
+     */
     MsgObjectType msg_type;
 } CANMsgObject;
 
@@ -138,7 +158,7 @@ typedef struct {
  */
 #define MSG_OBJ_USE_DIR_FILTER  (0x00000010 | MSG_OBJ_USE_ID_FILTER)
 
-/* 
+/*
  * Use the extened ID as an acceptance filter. This filter implies the usage of
  * the standard ID acceptance filter.
  */
