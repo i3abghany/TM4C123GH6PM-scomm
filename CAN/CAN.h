@@ -5,12 +5,12 @@
 #include "CANMap.h"
 
 #ifndef F_SYS_CLOCK
-    #define F_SYS_CLOCK 25000000
+    #define F_SYS_CLOCK 50000000
 #endif
 
 enum CAN {
-    CAN0,
-    CAN1
+    CAN0 = CAN0_BASE_ADDR,
+    CAN1 = CAN1_BASE_ADDR
 };
 
 struct CANConfig {
@@ -20,10 +20,10 @@ struct CANConfig {
 };
 
 enum MsgObjectType {
-    CAN_MSG_OBJECT_TYPE_RX,
-    CAN_MSG_OBJECT_TYPE_RX_REMOTE,
-    CAN_MSG_OBJECT_TYPE_TX,
-    CAN_MSG_OBJECT_TYPE_TX_REMOTE
+    CAN_MSG_OBJ_TYPE_RX,
+    CAN_MSG_OBJ_TYPE_RX_REMOTE,
+    CAN_MSG_OBJ_TYPE_TX,
+    CAN_MSG_OBJ_TYPE_TX_REMOTE
 };
 
 struct CANMsgObject {
@@ -56,6 +56,7 @@ struct CANMsgObject {
 #define CANCTL_INIT_MASK (1 << 0)
 #define CANCTL_CCE_MASK  (1 << 6)
 
+/*              CANBIT fields and flags              */
 #define CANBIT_SEG2_POS 12
 #define CANBIT_SEG1_POS 8
 #define CANBIT_SJW_POS 6
@@ -66,14 +67,44 @@ struct CANMsgObject {
 #define CANBIT_SJW_MASK  (0b00000011)
 #define CANBIT_BRP_MASK  (0b00111111)
 
-#define CANIF1CMSK_WRNRD_MASK     (0x00000080)
-#define CANIF1CMSK_MASK_MASK      (0x00000040)
-#define CANIF1CMSK_ARB_MASK       (0x00000020)
-#define CANIF1CMSK_CONTROL_MASK   (0x00000010)
-#define CANIF1CMSK_CLRINTPND_MASK (0x00000008)
-#define CANIF1CMSK_NEWDAT_MASK    (0x00000004)
-#define CANIF1CMSK_DATAA_MASK     (0x00000002)
-#define CANIF1CMSK_DATAB_MASK     (0x00000001)
+/*           CANIF1CMSK fields and flags             */
+#define CANIF1CMSK_WRNRD_MASK      0x00000080
+#define CANIF1CMSK_MASK_MASK       0x00000040
+#define CANIF1CMSK_ARB_MASK        0x00000020
+#define CANIF1CMSK_CONTROL_MASK    0x00000010
+#define CANIF1CMSK_CLRINTPND_MASK  0x00000008
+#define CANIF1CMSK_NEWDAT_MASK     0x00000004
+#define CANIF1CMSK_TXRQST_MASK     0x00000004
+#define CANIF1CMSK_DATAA_MASK      0x00000002
+#define CANIF1CMSK_DATAB_MASK      0x00000001
+
+/* CANIF1CRQ fields and flags */
+#define CANIF1CRQ_MNUM_MASK        0x0000003F
+#define CANIF1CRQ_BUSY_MASK        0x00008000
+
+/*           CANIF1MSK1 fields and flags             */
+#define CANIF1MSK1_ID_MASK         0x000007FF
+
+/*           CANIF1MSK2 fields and flags             */
+#define CANIF1MSK2_MSK_MASK       0x00004000
+#define CANIF1MSK2_MDIR_MASK       0x00004000
+#define CANIF1MSK2_MXTD_MASK       0x00008000
+
+/*           CANIF1MCTL fields and flags             */
+#define CANIF1MCTL_DLC_MASK        0x00000007
+#define CANIF1MCTL_EOB_MASK        0x00000080
+#define CANIF1MCTL_TXRQST_MASK     0x00000100
+#define CANIF1MCTL_RXIE_MASK       0x00000400
+#define CANIF1MCTL_TXIE_MASK       0x00000800
+#define CANIF1MCTL_UMASK_MASK      0x00001000
+#define CANIF1MCTL_INTPND_MASK     0x00002000
+
+/*           CANIF1ARB* fields and flags             */
+#define CANIF1ARB1_ID_MASK         0x0000FFFF
+#define CANIF1ARB2_ID_MASK         0x00001FFF
+#define CANIF1ARB2_DIR_MASK        0x00002000
+#define CANIF1ARB2_XTD_MASK        0x00004000
+#define CANIF1ARB2_MSGVAL_MASK     0x00008000
 
 #define CONSTRUCT_CANBIT(seg2, seg1, sjw, brp)         \
     (((seg2 & CANBIT_SEG2_MASK) << CANBIT_SEG2_POS) |  \
@@ -85,6 +116,34 @@ struct CANMsgObject {
 #define N_TIME_QUANTA 5
 
 /*              Message Object Flags                */
+
+/* Indicates that transmit interrupts enabled. */
+#define CAN_MSG_OBJ_FLAG_TX_INT_ENABLED  0x00000001
+
+/* Indicates that receive interrupts enabled. */
+#define CAN_MSG_OBJ_FLAG_RX_INT_ENABLED  0x00000002
+
+/* The message object uses the extended ID with 29 bits. */
+#define CAN_MSG_OBJ_FLAG_29_BIT_ID       0x00000004
+
+/* Acceptance filter using the ID. */
+#define CAN_MSG_OBJ_FLAG_ID_FILTER       0x00000008
+
+/*
+ * Acceptance filter using the DIR field in the message object. This acceptance
+ * filter also implies the usage of the ID filter.
+ */
+#define CAN_MSG_OBJ_FLAG_DIR_FILTER     (0x00000010 | CAN_MSG_OBJ_FLAG_ID_FILTER)
+
+/* 
+ * Use the extened ID as an acceptance filter. This filter implies the usage of
+ * the standard ID acceptance filter.
+ */
+#define CAN_MSG_OBJ_FLAG_29_BIT_FILTER  (0x00000020 | CAN_MSG_OBJ_FLAG_ID_FILTER)
+
+/* Implies that the message object is a remote frame. */
+#define CAN_MSG_OBJ_FLAG_REMOTE_FRAME    0x00000040
+
 #define CAN_11_BIT_ID_MASK 0x000007FF
 
 #define min(x, y) ((x) < (y)) ? (x) : (y)
@@ -92,6 +151,6 @@ struct CANMsgObject {
 void CAN_disable(enum CAN c);
 void CAN_enable(enum CAN c);
 bool CAN_init(struct CANConfig *cfg);
-bool CAN_config_transmit_message(enum CAN, struct CANMsgObject *msg);
+bool CAN_config_message(enum CAN, struct CANMsgObject *msg);
 
 #endif
