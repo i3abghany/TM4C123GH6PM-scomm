@@ -302,7 +302,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
     return true;
 }
 
-static void CAN_memcpy(void *dst, void *src, uint8_t n)
+static inline void CAN_memcpy(void *dst, void *src, uint8_t n)
 {
     for (uint8_t i = 0; i < n; i++) {
         ((uint8_t *)src)[i] = ((uint8_t *)dst)[i];
@@ -466,12 +466,14 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
         CANIF1MCTL_value |= CANIF1MCTL_TXRQST_MASK;
     }
 
+    /* Finally, commit the values to the CAN controller registers. */
     PTR(CAN_BASE_ADDR, CANIF1MSK1_OFFSET) |= CANIF1MSK1_value;
     PTR(CAN_BASE_ADDR, CANIF1MSK2_OFFSET) |= CANIF1MSK2_value;
-    PTR(CAN_BASE_ADDR, CANIF1MCTL_OFFSET) |= CANIF1MCTL_value;
     PTR(CAN_BASE_ADDR, CANIF1ARB1_OFFSET) |= CANIF1ARB1_value;
     PTR(CAN_BASE_ADDR, CANIF1ARB2_OFFSET) |= CANIF1ARB2_value;
     PTR(CAN_BASE_ADDR,  CANIF1CRQ_OFFSET) |=  CANIF1CRQ_value;
+    PTR(CAN_BASE_ADDR, CANIF1MCTL_OFFSET) |= CANIF1MCTL_value;
+
     return true;
 }
 
