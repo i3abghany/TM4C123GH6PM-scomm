@@ -103,9 +103,9 @@ static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
     uint8_t tTSeg1 = (prop_time + phase1_time);
     uint8_t tTSeg2 = (phase2_time);
 
-    /* 
+    /*
      * The length of the synchronization jump width is set to the least of 4,
-     * Phase1 or Phase2 
+     * Phase1 or Phase2
      */
     uint8_t tSJW   = min(min(phase1_time, phase2_time), 4);
 
@@ -239,6 +239,10 @@ static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t option
     }
 }
 
+/* Must we assert the TXRQST bit or not? It must be asserted in case of a
+ * transmit-remote message object, a data-transmit message object, or an
+ * auto-transmission of a remote frame.
+ */
 static inline bool CAN_is_transmit_type(MsgObjectType type)
 {
     return type == MSG_OBJ_TYPE_TX_REMOTE ||
@@ -255,6 +259,13 @@ typedef struct {
     uint32_t  *CANIF1CRQ_value;
 } _CANRegsValues;
 
+/* Internal helper for configuring the CAN controller interface registers
+ * according to the message type, since different configurations must be asserted
+ * for different message types.
+ *
+ * Return value: Returns true on success. If a mangled MsgObjectType value was
+ * supplied, it returns false.
+ */
 static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         MsgObjectType type, uint32_t flags, _CANRegsValues *vals)
 {
@@ -284,7 +295,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         /* Set the DIR bit to indicate TX. */
         *(vals->CANIF1ARB2_value) |= CANIF1ARB2_DIR_MASK;
 
-        /* 
+        /*
          * Do not change the TXRQST bit of the CANIFnMCTL register at reception
          * of the frame. This means that the software has to handle the frame
          * manually.  That's particularly useful when the receiving controller
@@ -293,7 +304,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
          */
         *(vals->CANIF1MCTL_value) &= ~CANIF1MCTL_RMTEN_MASK;
 
-        /* 
+        /*
          * Reset the value of TXRQST for manual resolution by the software.
          * This is done automatically by setting the initial value of CANIF1MCTL
          * to zero.
@@ -374,29 +385,53 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
     return true;
 }
 
+/*
+ * Internal helper that sequentially copies `n` bytes from `src` to `dst`.
+ */
 static inline void CAN_memcpy(void *dst, void *src, uint8_t n)
 {
     for (uint8_t i = 0; i < n; i++) {
-        ((uint8_t *)src)[i] = ((uint8_t *)dst)[i];
+        ((uint8_t *)dst)[i] = ((uint8_t *)src)[i];
     }
 }
 
-static bool CAN_write_data_to_reg(uint32_t CAN_BASE_ADDR, uint8_t *data, uint8_t len)
+/*
+ * Internal helper that takes in data and writes it to the data space in the CAN
+ * controller register address space. Since The data registers are laid-out in
+ * memory as a contiguous map, starting from CAN*IF1DA1, then we can just memcpy
+ * into this starting address.
+ */
+static void CAN_write_data_to_reg(uint32_t CAN_BASE_ADDR, uint8_t *data, uint8_t len)
 {
-    /*
-     * Since The data registers are laid-out in memory as a contiguous map,
-     * starting from CAN*IF1DA1, then we can just memcpy into this starting
-     * address.
-     */
     CAN_memcpy((void *)(CAN_BASE_ADDR + CANIF1DA1_OFFSET), data, len);
 }
 
-static bool CAN_read_data_from_reg(uint32_t CAN_BASE_ADDR, uint8_t *buff, uint8_t len)
+/*
+ * Internal helper to read the `len`-bytes from the data address space of the CAN
+ * controller.
+ */
+static void CAN_read_data_from_reg(uint32_t CAN_BASE_ADDR, uint8_t *buff, uint8_t len)
 {
-    /* Read from the start of the CANIF1DA1 register up to `len` bytes. */
     CAN_memcpy(buff, (void *)(CAN_BASE_ADDR + CANIF1DA1_OFFSET), len);
 }
 
+/* An API to configure a message object with the appropriate parameters provided in `msg`.
+ *
+ * A message object can be configured with acceptance filtering factors so that
+ * the CAN controller does not accept any messages but for the ones that pass
+ * through the filtering process. 
+ * 
+ * Interrupts can also be configured to trigger on events such as message
+ * receiving or on a complete transmission.
+ * 
+ * Those options are configured by the API user in the `flags` field in the
+ * CANMsgObject struct.
+ * 
+ * Return value: Returns true on successful configuration. Returns false for the
+ * following erroneous states:
+ *     * The object ID is wrong (i.e. out of th [1, 32] range)
+ *     * The message type is a mangled enum value
+ */
 bool CAN_config_message(enum CAN c, CANMsgObject *msg)
 {
     uint32_t CANIF1MSK1_value = 0;
@@ -466,6 +501,8 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
     /*
      * Use the MXTD and MDIR bits to specify whether to use XTD and DIR for
      * acceptance filtering.
+     * 
+     * This specifies full, extended ID and direction filtering, respectively.
      */
     if ((msg->flags & MSG_OBJ_USE_DIR_FILTER) == MSG_OBJ_USE_DIR_FILTER) {
         CANIF1MSK2_value |= CANIF1MSK2_MDIR_MASK;
@@ -560,6 +597,12 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
     return true;
 }
 
+/* An API to fetch the data out from a message objec, and subsequently populate
+ * `msg` with the data.
+ *
+ * Return value: Returns true on success. When a wrong message object ID is
+ * provided in `msg`, it returns false.
+ */
 bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
 {
     uint32_t CANIF1MSK1_value = 0;
@@ -576,7 +619,7 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
         return false;
     }
 
-    /* 
+    /*
      * The CPU first writes 0x007F to the CANIFnCMSK register. Which means we
      * set all the bits in CANIF1CMSK to 1 but for the WRNRD bit, since we're
      * only reading from the message object.
@@ -587,10 +630,10 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
      */
     CAN_config_CANIF1CMSK(CAN_BASE_ADDR, CANIF1CMSK_DATAA_MASK  |
                                          CANIF1CMSK_DATAB_MASK  |
-                                         CANIF1CMSK_MASK_MASK   | 
+                                         CANIF1CMSK_MASK_MASK   |
                                          CANIF1CMSK_ARB_MASK    |
                                          CANIF1CMSK_TXRQST_MASK |
-                                         CANIF1CMSK_CONTROL_MASK);  
+                                         CANIF1CMSK_CONTROL_MASK);
 
     /* Write the number of the message object to the CANIFnCRQ register */
     PTR(CAN_BASE_ADDR, CANIF1CRQ_OFFSET) |= (msg->obj_id & CANIF1CRQ_MNUM_MASK);
@@ -609,11 +652,11 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
     /*
      * For RX remote frames, TXRQST is reset and DIR is set.
      * For TX remote frames, TXRQST is set and DIR is reset.
-     * 
+     *
      * Otherwise, it's not a remote (RX/TX) frame.
      */
     if (dir_bit != txrqst_bit) {
-        msg->flags |= MSG_OBJ_REMOTE_FRAME;        
+        msg->flags |= MSG_OBJ_REMOTE_FRAME;
     }
 
     /*
@@ -637,8 +680,8 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
     }
 
     /* Are interrupts enabled for this message object? */
-    
-    /* 
+
+    /*
      * If the TXIE bit in CANIF1MCTL register was set, then the TX interrupt was
      * initially enabled for this message object.
      */
@@ -646,7 +689,7 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
         msg->flags |= MSG_OBJ_TX_INT_ENABLED;
     }
 
-    /* 
+    /*
      * If the RXIE bit in CANIF1MCTL register was set, then the RX interrupt was
      * initially enabled for this message object.
      */
@@ -657,9 +700,9 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
     /* Is the ID used for acceptance filtering? If so, extract the mask. */
     if (CANIF1MCTL_value & CANIF1MCTL_UMASK_MASK) {
         if (CANIF1ARB2_value & CANIF1ARB2_XTD_MASK) {
-            msg->msg_id_mask = ((CANIF1MSK2_value & CANIF1MSK2_MSK_MASK) << 16) | 
+            msg->msg_id_mask = ((CANIF1MSK2_value & CANIF1MSK2_MSK_MASK) << 16) |
                                (CANIF1MSK1_value & CANIF1MSK1_MSK_MASK);
-            
+
             msg->flags |= MSG_OBJ_USE_ID_FILTER;
 
             /*
@@ -669,7 +712,7 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
             if (CANIF1MSK2_value & CANIF1MSK2_MXTD_MASK) {
                 msg->flags |= MSG_OBJ_USE_EXT_FILTER;
             }
-            
+
         } else {
             msg->msg_id_mask = (CANIF1MSK2_value >> 2) & CANIF1MSK2_MSK_MASK;
             msg->flags |= MSG_OBJ_USE_ID_FILTER;
@@ -699,4 +742,32 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
         /* We do this to indicate that there were no data read. */
         msg->data_len = 0;
     }
+}
+
+/*
+ * An API to clear the contents of a message object. The message object is left
+ * in an invalid state. It must be reprogrammed to be used.
+ *
+ * Return value: Returns true on success. When a wrong message object ID is
+ * given, it returns false.
+ */
+bool CAN_remove_message_object(enum CAN c, uint8_t obj_id)
+{
+    uint32_t CAN_BASE_ADDR = (uint32_t)c;
+
+    if (obj_id > 32 || obj_id == 0) {
+        return false;
+    }
+
+    /*
+     * Allow writing to the ARB* registers, which contain the MSGVAL bit.  The
+     * MSGVAL bit is responsible for identifying whether the message object is
+     * valid or not.
+     */
+    PTR(CAN_BASE_ADDR, CANIF1CMSK_OFFSET) =
+        CANIF1CMSK_WRNRD_MASK | CANIF1CMSK_ARB_MASK;
+
+    PTR(CAN_BASE_ADDR, CANIF1ARB2_OFFSET) &= ~CANIF1ARB2_MSGVAL_MASK;
+
+    return true;
 }

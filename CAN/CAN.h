@@ -187,5 +187,6 @@ void CAN_enable(enum CAN c);
 bool CAN_init(CANConfig *cfg);
 bool CAN_config_message(enum CAN c, CANMsgObject *msg);
 bool CAN_get_message_object(enum CAN c, CANMsgObject *msg);
+bool CAN_remove_message_object(enum CAN c, uint8_t obj_id);
 
 #endif
