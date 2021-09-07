@@ -104,10 +104,10 @@ typedef struct {
 #define CANIF1CRQ_BUSY_MASK        0x00008000
 
 /*           CANIF1MSK1 fields and flags             */
-#define CANIF1MSK1_ID_MASK         0x000007FF
+#define CANIF1MSK1_MSK_MASK        0x000007FF
 
 /*           CANIF1MSK2 fields and flags             */
-#define CANIF1MSK2_MSK_MASK       0x00004000
+#define CANIF1MSK2_MSK_MASK        0x00001FFF
 #define CANIF1MSK2_MDIR_MASK       0x00004000
 #define CANIF1MSK2_MXTD_MASK       0x00008000
 
@@ -115,11 +115,12 @@ typedef struct {
 #define CANIF1MCTL_DLC_MASK        0x00000007
 #define CANIF1MCTL_EOB_MASK        0x00000080
 #define CANIF1MCTL_TXRQST_MASK     0x00000100
-#define CANIF1MCTL_RMTEN_MASK     0x00000200
+#define CANIF1MCTL_RMTEN_MASK      0x00000200
 #define CANIF1MCTL_RXIE_MASK       0x00000400
 #define CANIF1MCTL_TXIE_MASK       0x00000800
 #define CANIF1MCTL_UMASK_MASK      0x00001000
 #define CANIF1MCTL_INTPND_MASK     0x00002000
+#define CANIF1MCTL_MSGLST_MASK     0x00004000
 
 /*           CANIF1ARB* fields and flags             */
 #define CANIF1ARB1_ID_MASK         0x0000FFFF
