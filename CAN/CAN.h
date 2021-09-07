@@ -171,17 +171,21 @@ typedef struct {
 /* Indicates new data is available for the message object. */
 #define MSG_OBJ_NEW_DATA        0x00000080
 
-/* This message object is part of a FIFO structure. */
-#define MSG_OBJ_NO_FLAGS        0x00000000
+/* Implies that the message object is a remote frame. */
+#define MSG_OBJ_REMOTE_FRAME    0x00000100
 
 /* Implies that the message object is a remote frame. */
-#define MSG_OBJ_REMOTE_FRAME    0x00000040
+#define MSG_OBJ_DATA_LOSS       0x00000200
+
+/* This message object is part of a FIFO structure. */
+#define MSG_OBJ_NO_FLAGS        0x00000000
 
 #define min(x, y) ((x) < (y)) ? (x) : (y)
 
 void CAN_disable(enum CAN c);
 void CAN_enable(enum CAN c);
 bool CAN_init(CANConfig *cfg);
-bool CAN_config_message(enum CAN, CANMsgObject *msg);
+bool CAN_config_message(enum CAN c, CANMsgObject *msg);
+bool CAN_get_message_object(enum CAN c, CANMsgObject *msg);
 
 #endif

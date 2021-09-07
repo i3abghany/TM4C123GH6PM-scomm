@@ -103,7 +103,10 @@ static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
     uint8_t tTSeg1 = (prop_time + phase1_time);
     uint8_t tTSeg2 = (phase2_time);
 
-    /* The length of the synchronization jump width is set to the least of 4, Phase1 or Phase2 */
+    /* 
+     * The length of the synchronization jump width is set to the least of 4,
+     * Phase1 or Phase2 
+     */
     uint8_t tSJW   = min(min(phase1_time, phase2_time), 4);
 
     /*
@@ -281,6 +284,21 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
         /* Set the DIR bit to indicate TX. */
         *(vals->CANIF1ARB2_value) |= CANIF1ARB2_DIR_MASK;
 
+        /* 
+         * Do not change the TXRQST bit of the CANIFnMCTL register at reception
+         * of the frame. This means that the software has to handle the frame
+         * manually.  That's particularly useful when the receiving controller
+         * does not have the data immediately upon the receiving of the remote
+         * frame.
+         */
+        *(vals->CANIF1MCTL_value) &= ~CANIF1MCTL_RMTEN_MASK;
+
+        /* 
+         * Reset the value of TXRQST for manual resolution by the software.
+         * This is done automatically by setting the initial value of CANIF1MCTL
+         * to zero.
+         */
+
         /*
          * Enable acceptance filtering using MSK, MXTD, MDIR bits in
          * CANIF*MSK* registers.
@@ -307,6 +325,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
          * Set the TXRQST bit so that the transmission request is fired
          * immediately. We do this outside this function.
          */
+
         break;
 
     case MSG_OBJ_TYPE_RXTX_REMOTE:
@@ -372,6 +391,12 @@ static bool CAN_write_data_to_reg(uint32_t CAN_BASE_ADDR, uint8_t *data, uint8_t
     CAN_memcpy((void *)(CAN_BASE_ADDR + CANIF1DA1_OFFSET), data, len);
 }
 
+static bool CAN_read_data_from_reg(uint32_t CAN_BASE_ADDR, uint8_t *buff, uint8_t len)
+{
+    /* Read from the start of the CANIF1DA1 register up to `len` bytes. */
+    CAN_memcpy(buff, (void *)(CAN_BASE_ADDR + CANIF1DA1_OFFSET), len);
+}
+
 bool CAN_config_message(enum CAN c, CANMsgObject *msg)
 {
     uint32_t CANIF1MSK1_value = 0;
@@ -405,7 +430,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
                              CANIF1CMSK_DATAB_MASK |
                              CANIF1CMSK_CONTROL_MASK);
 
-    bool use_extended_bit_id = ((msg->msg_id > CANIF1MSK1_ID_MASK) &&
+    bool use_extended_bit_id = ((msg->msg_id > CANIF1MSK1_MSK_MASK) &&
                           (msg->flags & MSG_OBJ_EXTENDED_ID));
 
     /*
@@ -420,10 +445,10 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
      */
     if (msg->flags & (MSG_OBJ_USE_ID_FILTER)) {
         if (use_extended_bit_id) {
-            CANIF1MSK1_value |= (msg->msg_id & CANIF1MSK1_ID_MASK);
-            CANIF1MSK2_value |= (msg->msg_id >> 16);
+            CANIF1MSK1_value |= (msg->msg_id_mask & CANIF1MSK1_MSK_MASK);
+            CANIF1MSK2_value |= (msg->msg_id_mask >> 16);
         } else {
-            CANIF1MSK2_value |= ((msg->msg_id & CANIF1MSK2_MSK_MASK) << 2);
+            CANIF1MSK2_value |= ((msg->msg_id_mask & CANIF1MSK2_MSK_MASK) << 2);
         }
     }
 
@@ -535,3 +560,143 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
     return true;
 }
 
+bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
+{
+    uint32_t CANIF1MSK1_value = 0;
+    uint32_t CANIF1MSK2_value = 0;
+    uint32_t CANIF1MCTL_value = 0;
+    uint32_t CANIF1ARB1_value = 0;
+    uint32_t CANIF1ARB2_value = 0;
+    uint32_t CANIF1CRQ_value  = 0;
+
+    uint32_t CAN_BASE_ADDR = (uint32_t)(c);
+
+    /* Only allow *correct* message IDs. */
+    if (msg->obj_id > 32 || msg->obj_id == 0) {
+        return false;
+    }
+
+    /* 
+     * The CPU first writes 0x007F to the CANIFnCMSK register. Which means we
+     * set all the bits in CANIF1CMSK to 1 but for the WRNRD bit, since we're
+     * only reading from the message object.
+     *
+     * That combination transfers the whole received message from the message
+     * RAM into the Message Buffer registers (CANIFnMSKn, CANIFnARBn, and
+     * CANIFnMCTL)
+     */
+    CAN_config_CANIF1CMSK(CAN_BASE_ADDR, CANIF1CMSK_DATAA_MASK  |
+                                         CANIF1CMSK_DATAB_MASK  |
+                                         CANIF1CMSK_MASK_MASK   | 
+                                         CANIF1CMSK_ARB_MASK    |
+                                         CANIF1CMSK_TXRQST_MASK |
+                                         CANIF1CMSK_CONTROL_MASK);  
+
+    /* Write the number of the message object to the CANIFnCRQ register */
+    PTR(CAN_BASE_ADDR, CANIF1CRQ_OFFSET) |= (msg->obj_id & CANIF1CRQ_MNUM_MASK);
+
+    CANIF1MSK1_value = PTR(CAN_BASE_ADDR, CANIF1MSK1_OFFSET);
+    CANIF1MSK2_value = PTR(CAN_BASE_ADDR, CANIF1MSK2_OFFSET);
+    CANIF1MCTL_value = PTR(CAN_BASE_ADDR, CANIF1MCTL_OFFSET);
+    CANIF1ARB1_value = PTR(CAN_BASE_ADDR, CANIF1ARB1_OFFSET);
+    CANIF1ARB2_value = PTR(CAN_BASE_ADDR, CANIF1ARB2_OFFSET);
+
+    msg->flags = MSG_OBJ_NO_FLAGS;
+
+    bool dir_bit = CANIF1ARB2_value & CANIF1ARB2_DIR_MASK;
+    bool txrqst_bit = CANIF1MCTL_value & CANIF1CMSK_TXRQST_MASK;
+
+    /*
+     * For RX remote frames, TXRQST is reset and DIR is set.
+     * For TX remote frames, TXRQST is set and DIR is reset.
+     * 
+     * Otherwise, it's not a remote (RX/TX) frame.
+     */
+    if (dir_bit != txrqst_bit) {
+        msg->flags |= MSG_OBJ_REMOTE_FRAME;        
+    }
+
+    /*
+     * The message handler stored a new message into this object when NEWDAT was
+     * set; the CPU has lost a message. This bit is only valid for message
+     * objects when the DIR bit in the CANIFnARB2 register is clear (receive)
+     */
+    if (!(CANIF1ARB2_value & CANIF1ARB2_DIR_MASK) && CANIF1ARB2_value & CANIF1MCTL_MSGLST_MASK) {
+        msg->flags |= MSG_OBJ_DATA_LOSS;
+    }
+
+    /*
+     * Extract the ID from the message object RAM. If the XTD bit is set,
+     * then the arbitration uses the full 29-bit ID.
+     */
+    if (CANIF1ARB2_value & CANIF1ARB2_XTD_MASK) {
+        msg->msg_id = ((CANIF1ARB2_value & CANIF1ARB2_ID_MASK) << 16) |
+                       (CANIF1ARB1_value & CANIF1ARB1_ID_MASK);
+    } else {
+        msg->msg_id = (CANIF1ARB2_value & CANIF1ARB2_ID_MASK) >> 2;
+    }
+
+    /* Are interrupts enabled for this message object? */
+    
+    /* 
+     * If the TXIE bit in CANIF1MCTL register was set, then the TX interrupt was
+     * initially enabled for this message object.
+     */
+    if (CANIF1MCTL_value & CANIF1MCTL_TXIE_MASK) {
+        msg->flags |= MSG_OBJ_TX_INT_ENABLED;
+    }
+
+    /* 
+     * If the RXIE bit in CANIF1MCTL register was set, then the RX interrupt was
+     * initially enabled for this message object.
+     */
+    if (CANIF1MCTL_value & CANIF1MCTL_RXIE_MASK) {
+        msg->flags |= MSG_OBJ_RX_INT_ENABLED;
+    }
+
+    /* Is the ID used for acceptance filtering? If so, extract the mask. */
+    if (CANIF1MCTL_value & CANIF1MCTL_UMASK_MASK) {
+        if (CANIF1ARB2_value & CANIF1ARB2_XTD_MASK) {
+            msg->msg_id_mask = ((CANIF1MSK2_value & CANIF1MSK2_MSK_MASK) << 16) | 
+                               (CANIF1MSK1_value & CANIF1MSK1_MSK_MASK);
+            
+            msg->flags |= MSG_OBJ_USE_ID_FILTER;
+
+            /*
+             * The Full 29-bit ID was used for acceptance filtering if and only
+             * if MXTD bit was set.
+             */
+            if (CANIF1MSK2_value & CANIF1MSK2_MXTD_MASK) {
+                msg->flags |= MSG_OBJ_USE_EXT_FILTER;
+            }
+            
+        } else {
+            msg->msg_id_mask = (CANIF1MSK2_value >> 2) & CANIF1MSK2_MSK_MASK;
+            msg->flags |= MSG_OBJ_USE_ID_FILTER;
+        }
+
+        /*
+        * The direction bit was used for acceptance filtering if and only if
+        * MDIR bit was set.
+        */
+        if (CANIF1MSK2_value & CANIF1MSK2_MDIR_MASK) {
+            msg->flags |= MSG_OBJ_USE_DIR_FILTER;
+        }
+    }
+
+    /*
+     * If there are new data since the last read, the NEWDAT bit in CANIF*MCTL
+     * register is set.
+     *
+     * The NEWDAT flag is *not* reset by the controller, it must be reset by the
+     * software after extracting the data from the CAN registers.
+     */
+    if (CANIF1MCTL_value & CANIF1CMSK_NEWDAT_MASK) {
+        CAN_read_data_from_reg(CAN_BASE_ADDR, msg->data, msg->data_len);
+        PTR(CAN_BASE_ADDR, CANIF1DA1_OFFSET) &= ~CANIF1CMSK_NEWDAT_MASK;
+        msg->flags |= MSG_OBJ_NEW_DATA;
+    } else {
+        /* We do this to indicate that there were no data read. */
+        msg->data_len = 0;
+    }
+}
