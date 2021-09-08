@@ -36,6 +36,16 @@ static inline void config_receive_obj()
     receive_message_obj.msg_type = MSG_OBJ_TYPE_RX;
 }
 
+static void NVIC_enable_CAN0_interrupt()
+{
+    const uint32_t NVIC_BASE_ADDR = 0xE000E000;
+    const uint32_t NVIC_INT_EN_1_OFFSET = 0x104;
+    const uint32_t CAN0_interrupt_bit = 39;
+    const uint32_t NVIC_INT_EN_CAN0_MASK = (1 << (CAN0_interrupt_bit - 32));
+
+    PTR(NVIC_BASE_ADDR, NVIC_INT_EN_1_OFFSET) |= NVIC_INT_EN_CAN0_MASK;
+}
+
 int main()
 {
     g_errflag = 0;
@@ -48,7 +58,7 @@ int main()
     };
 
     CAN_init(&cfg);
-    /* TODO: Enable CAN0 interrupt in the NVIC. */
+    NVIC_enable_CAN0_interrupt();
     CAN_interrupt_enable(CAN0, CAN_INTR_ALL);
     CAN_enable(CAN0);
 
