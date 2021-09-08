@@ -74,7 +74,12 @@ typedef struct {
 #define CAN0_PCTL ((8 << 16) | (8 << 20))
 #define CAN1_PCTL ((8 <<  0) | (8 <<  4))
 
+/*             CANCTL fields and flags.              */
+
 #define CANCTL_INIT_MASK (1 << 0)
+#define CANCTL_IE_MASK   (1 << 1)
+#define CANCTL_SIE_MASK  (1 << 2)
+#define CANCTL_EIE_MASK  (1 << 3)
 #define CANCTL_CCE_MASK  (1 << 6)
 
 /*              CANBIT fields and flags              */
@@ -180,6 +185,13 @@ typedef struct {
 /* This message object is part of a FIFO structure. */
 #define MSG_OBJ_NO_FLAGS        0x00000000
 
+/*                 Interrupt flags                   */
+#define CAN_INTR_GLOBAL    CANCTL_IE_MASK
+#define CAN_INTR_STATUS    CANCTL_SIE_MASK
+#define CAN_INTR_ERROR     CANCTL_EIE_MASK
+#define CAN_INTR_ALL       (CAN_INTR_GLOBAL | CAN_INTR_STATUS | CAN_INTR_ERROR)
+
+
 #define min(x, y) ((x) < (y)) ? (x) : (y)
 
 void CAN_disable(enum CAN c);
@@ -188,5 +200,6 @@ bool CAN_init(CANConfig *cfg);
 bool CAN_config_message(enum CAN c, CANMsgObject *msg);
 bool CAN_get_message_object(enum CAN c, CANMsgObject *msg);
 bool CAN_remove_message_object(enum CAN c, uint8_t obj_id);
+bool CAN_interrupt_enable(enum CAN c, uint32_t interrupt_masks);
 
 #endif

@@ -771,3 +771,25 @@ bool CAN_remove_message_object(enum CAN c, uint8_t obj_id)
 
     return true;
 }
+
+/*
+ * Enable certain interrupts for a specific CAN controller. The available
+ * interrupt masks are CAN_INTR_GLOBAL, CAN_INTR_STATUS, and CAN_INTR_ERROR.
+ *
+ * A utility definition CAN_INTR_ALL that comprises the value of the three masks
+ * is available to be used by the API user.
+ *
+ * Return value: Returns true on successful enabling of the specified
+ * interrupts. Returns false if undefined interrupts are requested to be
+ * enabled.
+ */
+bool CAN_interrupt_enable(enum CAN c, uint32_t interrupt_masks)
+{
+    uint32_t CAN_BASE_ADDR = (uint32_t)c;
+
+    if ((interrupt_masks & CAN_INTR_ALL) != 0) {
+        return false;
+    }
+
+    PTR(CAN_BASE_ADDR, CANCTL_OFFSET) |= interrupt_masks;
+}

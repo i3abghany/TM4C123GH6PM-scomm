@@ -11,6 +11,7 @@
 #define CANCTL_OFFSET     0x000
 #define CANSTS_OFFSET     0x004
 #define CANERR_OFFSET     0x008
+#define CANINT_OFFSET     0x010
 #define CANBIT_OFFSET     0x00C
 #define CANINT_OFFSET     0x010
 #define CANTST_OFFSET     0x014
@@ -22,6 +23,7 @@
 #define CANIF1ARB2_OFFSET 0x034
 #define CANIF1MCTL_OFFSET 0x038
 #define CANIF1DA1_OFFSET  0x03C
+#define CANMSG1INT_OFFSET 0x140
 
 /*                    SYSCTRL Map                       */
 
