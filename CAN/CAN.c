@@ -419,14 +419,14 @@ static void CAN_read_data_from_reg(uint32_t CAN_BASE_ADDR, uint8_t *buff, uint8_
  *
  * A message object can be configured with acceptance filtering factors so that
  * the CAN controller does not accept any messages but for the ones that pass
- * through the filtering process. 
- * 
+ * through the filtering process.
+ *
  * Interrupts can also be configured to trigger on events such as message
  * receiving or on a complete transmission.
- * 
+ *
  * Those options are configured by the API user in the `flags` field in the
  * CANMsgObject struct.
- * 
+ *
  * Return value: Returns true on successful configuration. Returns false for the
  * following erroneous states:
  *     * The object ID is wrong (i.e. out of th [1, 32] range)
@@ -501,7 +501,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
     /*
      * Use the MXTD and MDIR bits to specify whether to use XTD and DIR for
      * acceptance filtering.
-     * 
+     *
      * This specifies full, extended ID and direction filtering, respectively.
      */
     if ((msg->flags & MSG_OBJ_USE_DIR_FILTER) == MSG_OBJ_USE_DIR_FILTER) {

@@ -82,7 +82,7 @@ typedef struct {
 #define CANCTL_EIE_MASK  (1 << 3)
 #define CANCTL_CCE_MASK  (1 << 6)
 
-/*              CANBIT fields and flags              */
+/*              CANBIT fields and flags.             */
 #define CANBIT_SEG2_POS 12
 #define CANBIT_SEG1_POS 8
 #define CANBIT_SJW_POS 6
@@ -92,6 +92,10 @@ typedef struct {
 #define CANBIT_SEG1_MASK (0b00001111)
 #define CANBIT_SJW_MASK  (0b00000011)
 #define CANBIT_BRP_MASK  (0b00111111)
+
+/*              CANINT fields and flags.             */
+#define CANINT_NO_INTR             0x00000000
+#define CANINT_STATUS_INTR         0x00008000
 
 /*           CANIF1CMSK fields and flags             */
 #define CANIF1CMSK_WRNRD_MASK      0x00000080
@@ -134,6 +138,68 @@ typedef struct {
 #define CANIF1ARB2_DIR_MASK        0x00002000
 #define CANIF1ARB2_XTD_MASK        0x00004000
 #define CANIF1ARB2_MSGVAL_MASK     0x00008000
+
+/*            CANSTS fields and flags               */
+
+/* Last Error Code, a change in this field triggers an interrupt. It indicates
+ * the last error the CAN bus has encountered
+ *
+ * Available valeus:
+ *
+ * 0x0    No Error
+ *
+ * 0x1    Stuff Error (More than 5 consecutive equal bits occurred in a received
+ *        frame)
+ *
+ * 0x2    Format Error (A fixed format part of the received frame has the wrong
+ *        format)
+ *
+ * 0x3    ACK Error (The message transmitted was not acknowledged by another
+ *        node)
+ *
+ * 0x4    Bit 1 Error (The current particular node lost arbitration, i.e. the
+ *        device wanted to send a High level (logical 1) but the monitored bus
+ *        value was Low (logical 0).)
+ *
+ * 0x5    Bit 0 Error (A Bit 0 Error indicates that the device wanted to send a
+ *        Low level (logical 0), but the monitored bus value was High (logical 1))
+ *
+ * 0x6    CRC Error (The CRC field of a received message was different from the
+ *        calculated CRC)
+ *
+ * 0x7    No Event (When the LEC bit shows this value, no CAN bus event was
+ *        detected since this value was written to the LEC field)
+ */
+#define CANSTS_LEC_MASK            0x00000007
+
+/*
+ * Transmitted a Message Successfully. This bit must be manually cleared by the
+ * software after handling the received message.
+ */
+#define CANSTS_TXOK_MASK           0x00000008
+
+/*
+ * Received a Message Successfully. This bit must be manually cleared by the
+ * software.
+ */
+#define CANSTS_RXOK_MASK           0x00000010
+
+/*
+ * Error Passive (If asserted, The CAN module is in the Error Passive state,
+ * that is, the receive or transmit error count is greater than 127)
+ */
+#define CANSTS_EPASS_MASK          0x00000020
+
+/*
+ * Warning Status (When asserted at least one of the error counters has reached
+ * the error warning limit of 96)
+ */
+#define CANSTS_EWARN_MASK          0x00000040
+
+/*
+ * Bus-Off Status (When asserted, the CAN controller is in bus-off state.)
+ */
+#define CANSTS_BOFF_MASK           0x00000080
 
 #define CONSTRUCT_CANBIT(seg2, seg1, sjw, brp)         \
     (((seg2 & CANBIT_SEG2_MASK) << CANBIT_SEG2_POS) |  \
