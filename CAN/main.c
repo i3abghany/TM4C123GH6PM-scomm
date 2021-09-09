@@ -14,7 +14,7 @@ uint8_t receive_buffer[] = { '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0' };
 CANMsgObject transmit_message_obj;
 CANMsgObject receive_message_obj;
 
-static inline void config_transmit_obj()
+static inline void config_transmit_obj(void)
 {
     transmit_message_obj.obj_id = g_transmit_obj_id;
     transmit_message_obj.msg_id_mask = 0;
@@ -25,7 +25,7 @@ static inline void config_transmit_obj()
     transmit_message_obj.msg_type = MSG_OBJ_TYPE_TX;
 }
 
-static inline void config_receive_obj()
+static inline void config_receive_obj(void)
 {
     receive_message_obj.obj_id = g_receive_obj_id;
     receive_message_obj.msg_id_mask = 0;
@@ -36,7 +36,7 @@ static inline void config_receive_obj()
     receive_message_obj.msg_type = MSG_OBJ_TYPE_RX;
 }
 
-static void NVIC_enable_CAN0_interrupt()
+static void NVIC_enable_CAN0_interrupt(void)
 {
     const uint32_t NVIC_BASE_ADDR = 0xE000E000;
     const uint32_t NVIC_INT_EN_1_OFFSET = 0x104;
@@ -44,6 +44,49 @@ static void NVIC_enable_CAN0_interrupt()
     const uint32_t NVIC_INT_EN_CAN0_MASK = (1 << (CAN0_interrupt_bit - 32));
 
     PTR(NVIC_BASE_ADDR, NVIC_INT_EN_1_OFFSET) |= NVIC_INT_EN_CAN0_MASK;
+}
+
+static void handle_bus_off(void)
+{
+    /*
+     * TODO: Proper error handling. For now, we halt for good since bus off state
+     * indicates a very unhealthy system.
+     */
+    g_errflag &= ~CANSTS_BOFF_MASK;
+    while (1);
+}
+
+static void handle_warning(void)
+{
+    /* TODO: Proper error handling */
+    g_errflag &= ~CANSTS_EWARN_MASK;
+}
+
+static void handle_error_passive(void)
+{
+    /* TODO: Proper error handling */
+    g_errflag &= ~CANSTS_EPASS_MASK;
+}
+
+static void handle_last_error(void)
+{
+    /* TODO: Proper error handling */
+    g_errflag &= ~CANSTS_LEC_MASK;
+}
+
+static void handle_errflag(void)
+{
+    if (g_errflag & CANSTS_BOFF_MASK) {
+        handle_bus_off();
+    } else if (g_errflag & CANSTS_EWARN_MASK) {
+        handle_warning();
+    } else if (g_errflag & CANSTS_EPASS_MASK) {
+        handle_error_passive();
+    }
+
+    if (g_errflag & CANSTS_LEC_MASK) {
+        handle_last_error();
+    }
 }
 
 int main()
@@ -91,7 +134,7 @@ int main()
         }
 
         if (g_errflag) {
-            /* TODO: Handle errors... */
+            handle_errflag();
         }
     }
 }

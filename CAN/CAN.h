@@ -201,6 +201,16 @@ typedef struct {
  */
 #define CANSTS_BOFF_MASK           0x00000080
 
+/*                    CAN errors                     */
+#define CAN_LEC_NO_ERRORS     0x0
+#define CAN_LEC_STUFF_ERROR   0x1
+#define CAN_LEC_FMT_ERROR     0x2
+#define CAN_LEC_ACK_ERROR     0x3
+#define CAN_LEC_BIT1_ERROR    0x4
+#define CAN_LEC_BIT0_ERROR    0x5
+#define CAN_LEC_CRC_ERROR     0x6
+#define CAN_LEC_NO_EVENT      0x7
+
 #define CONSTRUCT_CANBIT(seg2, seg1, sjw, brp)         \
     (((seg2 & CANBIT_SEG2_MASK) << CANBIT_SEG2_POS) |  \
     ((seg1 & CANBIT_SEG1_MASK) << CANBIT_SEG1_POS)  |  \
