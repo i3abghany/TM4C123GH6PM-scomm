@@ -16,7 +16,7 @@ enum CAN {
 typedef struct {
     enum CAN can_num;
     uint32_t bit_rate;
-    int8_t prop_time;
+    uint8_t prop_time;
 } CANConfig;
 
 typedef enum {
@@ -76,70 +76,70 @@ typedef struct {
 
 /*             CANCTL fields and flags.              */
 
-#define CANCTL_INIT_MASK (1 << 0)
-#define CANCTL_IE_MASK   (1 << 1)
-#define CANCTL_SIE_MASK  (1 << 2)
-#define CANCTL_EIE_MASK  (1 << 3)
-#define CANCTL_CCE_MASK  (1 << 6)
+#define CANCTL_INIT_MASK ((uint32_t)(1 << 0))
+#define CANCTL_IE_MASK   ((uint32_t)(1 << 1))
+#define CANCTL_SIE_MASK  ((uint32_t)(1 << 2))
+#define CANCTL_EIE_MASK  ((uint32_t)(1 << 3))
+#define CANCTL_CCE_MASK  ((uint32_t)(1 << 6))
 
 /*              CANBIT fields and flags.             */
 #define CANBIT_SEG2_POS 12
-#define CANBIT_SEG1_POS 8
-#define CANBIT_SJW_POS 6
-#define CANBIT_BRP_POS 0
+#define CANBIT_SEG1_POS  8
+#define CANBIT_SJW_POS   6
+#define CANBIT_BRP_POS   0
 
-#define CANBIT_SEG2_MASK (0b00000111)
-#define CANBIT_SEG1_MASK (0b00001111)
-#define CANBIT_SJW_MASK  (0b00000011)
-#define CANBIT_BRP_MASK  (0b00111111)
+#define CANBIT_SEG2_MASK (uint32_t)(0b00000111)
+#define CANBIT_SEG1_MASK (uint32_t)(0b00001111)
+#define CANBIT_SJW_MASK  (uint32_t)(0b00000011)
+#define CANBIT_BRP_MASK  (uint32_t)(0b00111111)
 
 /*              CANINT fields and flags.             */
-#define CANINT_NO_INTR             0x00000000
-#define CANINT_STATUS_INTR         0x00008000
+#define CANINT_NO_INTR             ((uint32_t)0x00000000)
+#define CANINT_STATUS_INTR         ((uint32_t)0x00008000)
 
 /*           CANIF1CMSK fields and flags             */
-#define CANIF1CMSK_WRNRD_MASK      0x00000080
-#define CANIF1CMSK_MASK_MASK       0x00000040
-#define CANIF1CMSK_ARB_MASK        0x00000020
-#define CANIF1CMSK_CONTROL_MASK    0x00000010
-#define CANIF1CMSK_CLRINTPND_MASK  0x00000008
-#define CANIF1CMSK_NEWDAT_MASK     0x00000004
-#define CANIF1CMSK_TXRQST_MASK     0x00000004
-#define CANIF1CMSK_DATAA_MASK      0x00000002
-#define CANIF1CMSK_DATAB_MASK      0x00000001
+#define CANIF1CMSK_WRNRD_MASK      ((uint32_t)0x00000080)
+#define CANIF1CMSK_MASK_MASK       ((uint32_t)0x00000040)
+#define CANIF1CMSK_ARB_MASK        ((uint32_t)0x00000020)
+#define CANIF1CMSK_CONTROL_MASK    ((uint32_t)0x00000010)
+#define CANIF1CMSK_CLRINTPND_MASK  ((uint32_t)0x00000008)
+#define CANIF1CMSK_NEWDAT_MASK     ((uint32_t)0x00000004)
+#define CANIF1CMSK_TXRQST_MASK     ((uint32_t)0x00000004)
+#define CANIF1CMSK_DATAA_MASK      ((uint32_t)0x00000002)
+#define CANIF1CMSK_DATAB_MASK      ((uint32_t)0x00000001)
 
 /* CANIF1CRQ fields and flags */
-#define CANIF1CRQ_MNUM_MASK        0x0000003F
-#define CANIF1CRQ_BUSY_MASK        0x00008000
+#define CANIF1CRQ_MNUM_MASK        ((uint32_t)0x0000003F)
+#define CANIF1CRQ_BUSY_MASK        ((uint32_t)0x00008000)
 
 /*           CANIF1MSK1 fields and flags             */
 #define CANIF1MSK1_MSK_MASK        0x000007FF
 
 /*           CANIF1MSK2 fields and flags             */
-#define CANIF1MSK2_MSK_MASK        0x00001FFF
-#define CANIF1MSK2_MDIR_MASK       0x00004000
-#define CANIF1MSK2_MXTD_MASK       0x00008000
+#define CANIF1MSK2_MSK_MASK        ((uint32_t)0x00001FFF)
+#define CANIF1MSK2_MDIR_MASK       ((uint32_t)0x00004000)
+#define CANIF1MSK2_MXTD_MASK       ((uint32_t)0x00008000)
 
 /*           CANIF1MCTL fields and flags             */
-#define CANIF1MCTL_DLC_MASK        0x00000007
-#define CANIF1MCTL_EOB_MASK        0x00000080
-#define CANIF1MCTL_TXRQST_MASK     0x00000100
-#define CANIF1MCTL_RMTEN_MASK      0x00000200
-#define CANIF1MCTL_RXIE_MASK       0x00000400
-#define CANIF1MCTL_TXIE_MASK       0x00000800
-#define CANIF1MCTL_UMASK_MASK      0x00001000
-#define CANIF1MCTL_INTPND_MASK     0x00002000
-#define CANIF1MCTL_MSGLST_MASK     0x00004000
+#define CANIF1MCTL_DLC_MASK        ((uint32_t)0x00000007)
+#define CANIF1MCTL_EOB_MASK        ((uint32_t)0x00000080)
+#define CANIF1MCTL_TXRQST_MASK     ((uint32_t)0x00000100)
+#define CANIF1MCTL_RMTEN_MASK      ((uint32_t)0x00000200)
+#define CANIF1MCTL_RXIE_MASK       ((uint32_t)0x00000400)
+#define CANIF1MCTL_TXIE_MASK       ((uint32_t)0x00000800)
+#define CANIF1MCTL_UMASK_MASK      ((uint32_t)0x00001000)
+#define CANIF1MCTL_INTPND_MASK     ((uint32_t)0x00002000)
+#define CANIF1MCTL_MSGLST_MASK     ((uint32_t)0x00004000)
 
 /*           CANIF1ARB* fields and flags             */
-#define CANIF1ARB1_ID_MASK         0x0000FFFF
+#define CANIF1ARB1_ID_MASK         ((uint32_t)0x0000FFFF)
 
-#define CANIF1ARB2_ID_MASK         0x00001FFF
-#define CANIF1ARB2_DIR_MASK        0x00002000
-#define CANIF1ARB2_XTD_MASK        0x00004000
-#define CANIF1ARB2_MSGVAL_MASK     0x00008000
+#define CANIF1ARB2_ID_MASK         ((uint32_t)0x00001FFF)
+#define CANIF1ARB2_DIR_MASK        ((uint32_t)0x00002000)
+#define CANIF1ARB2_XTD_MASK        ((uint32_t)0x00004000)
+#define CANIF1ARB2_MSGVAL_MASK     ((uint32_t)0x00008000)
 
-/*            CANSTS fields and flags               */
+/*            CANSTS fields and flags                */
 
 /* Last Error Code, a change in this field triggers an interrupt. It indicates
  * the last error the CAN bus has encountered
@@ -170,46 +170,46 @@ typedef struct {
  * 0x7    No Event (When the LEC bit shows this value, no CAN bus event was
  *        detected since this value was written to the LEC field)
  */
-#define CANSTS_LEC_MASK            0x00000007
+#define CANSTS_LEC_MASK            ((uint32_t)0x00000007)
 
 /*
  * Transmitted a Message Successfully. This bit must be manually cleared by the
  * software after handling the received message.
  */
-#define CANSTS_TXOK_MASK           0x00000008
+#define CANSTS_TXOK_MASK           ((uint32_t)0x00000008)
 
 /*
  * Received a Message Successfully. This bit must be manually cleared by the
  * software.
  */
-#define CANSTS_RXOK_MASK           0x00000010
+#define CANSTS_RXOK_MASK           ((uint32_t)0x00000010)
 
 /*
  * Error Passive (If asserted, The CAN module is in the Error Passive state,
  * that is, the receive or transmit error count is greater than 127)
  */
-#define CANSTS_EPASS_MASK          0x00000020
+#define CANSTS_EPASS_MASK          ((uint32_t)0x00000020)
 
 /*
  * Warning Status (When asserted at least one of the error counters has reached
  * the error warning limit of 96)
  */
-#define CANSTS_EWARN_MASK          0x00000040
+#define CANSTS_EWARN_MASK          ((uint32_t)0x00000040)
 
 /*
  * Bus-Off Status (When asserted, the CAN controller is in bus-off state.)
  */
-#define CANSTS_BOFF_MASK           0x00000080
+#define CANSTS_BOFF_MASK           ((uint32_t)0x00000080)
 
 /*                    CAN errors                     */
-#define CAN_LEC_NO_ERRORS     0x0
-#define CAN_LEC_STUFF_ERROR   0x1
-#define CAN_LEC_FMT_ERROR     0x2
-#define CAN_LEC_ACK_ERROR     0x3
-#define CAN_LEC_BIT1_ERROR    0x4
-#define CAN_LEC_BIT0_ERROR    0x5
-#define CAN_LEC_CRC_ERROR     0x6
-#define CAN_LEC_NO_EVENT      0x7
+#define CAN_LEC_NO_ERRORS     ((uint32_t)0x0)
+#define CAN_LEC_STUFF_ERROR   ((uint32_t)0x1)
+#define CAN_LEC_FMT_ERROR     ((uint32_t)0x2)
+#define CAN_LEC_ACK_ERROR     ((uint32_t)0x3)
+#define CAN_LEC_BIT1_ERROR    ((uint32_t)0x4)
+#define CAN_LEC_BIT0_ERROR    ((uint32_t)0x5)
+#define CAN_LEC_CRC_ERROR     ((uint32_t)0x6)
+#define CAN_LEC_NO_EVENT      ((uint32_t)0x7)
 
 #define CONSTRUCT_CANBIT(seg2, seg1, sjw, brp)         \
     (((seg2 & CANBIT_SEG2_MASK) << CANBIT_SEG2_POS) |  \
@@ -218,48 +218,48 @@ typedef struct {
     ((brp  &  CANBIT_BRP_MASK) <<  CANBIT_BRP_POS))
 
 /* The bit time may consist of 4 to 25 time quanta. */
-#define N_TIME_QUANTA 5
+#define N_TIME_QUANTA           (uint8_t)(5)
 
 /*              Message Object Flags                */
 
 /* Indicates that transmit interrupts enabled. */
-#define MSG_OBJ_TX_INT_ENABLED  0x00000001
+#define MSG_OBJ_TX_INT_ENABLED  ((uint32_t)0x00000001)
 
 /* Indicates that receive interrupts enabled. */
-#define MSG_OBJ_RX_INT_ENABLED  0x00000002
+#define MSG_OBJ_RX_INT_ENABLED  ((uint32_t)0x00000002)
 
 /* The message object uses the extended ID with 29 bits. */
-#define MSG_OBJ_EXTENDED_ID     0x00000004
+#define MSG_OBJ_EXTENDED_ID     ((uint32_t)0x00000004)
 
 /* Using the standard ID as an acceptance filter. */
-#define MSG_OBJ_USE_ID_FILTER   0x00000008
+#define MSG_OBJ_USE_ID_FILTER   ((uint32_t)0x00000008)
 
 /*
  * Acceptance filter using the DIR field in the message object. This acceptance
  * filter also implies the usage of the ID filter.
  */
-#define MSG_OBJ_USE_DIR_FILTER  (0x00000010 | MSG_OBJ_USE_ID_FILTER)
+#define MSG_OBJ_USE_DIR_FILTER  ((uint32_t)(0x00000010 | MSG_OBJ_USE_ID_FILTER))
 
 /*
  * Use the extened ID as an acceptance filter. This filter implies the usage of
  * the standard ID acceptance filter.
  */
-#define MSG_OBJ_USE_EXT_FILTER  (0x00000020 | MSG_OBJ_USE_ID_FILTER)
+#define MSG_OBJ_USE_EXT_FILTER  ((uint32_t)(0x00000020 | MSG_OBJ_USE_ID_FILTER))
 
 /* This message object is part of a FIFO structure. */
-#define MSG_OBJ_FIFO            0x00000040
+#define MSG_OBJ_FIFO            ((uint32_t)0x00000040)
 
 /* Indicates new data is available for the message object. */
-#define MSG_OBJ_NEW_DATA        0x00000080
+#define MSG_OBJ_NEW_DATA        ((uint32_t)0x00000080)
 
 /* Implies that the message object is a remote frame. */
-#define MSG_OBJ_REMOTE_FRAME    0x00000100
+#define MSG_OBJ_REMOTE_FRAME    ((uint32_t)0x00000100)
 
 /* Implies that the message object is a remote frame. */
-#define MSG_OBJ_DATA_LOSS       0x00000200
+#define MSG_OBJ_DATA_LOSS       ((uint32_t)0x00000200)
 
 /* This message object is part of a FIFO structure. */
-#define MSG_OBJ_NO_FLAGS        0x00000000
+#define MSG_OBJ_NO_FLAGS        ((uint32_t)0x00000000)
 
 /*                 Interrupt flags                   */
 #define CAN_INTR_GLOBAL    CANCTL_IE_MASK

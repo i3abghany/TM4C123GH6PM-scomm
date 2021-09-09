@@ -3,7 +3,7 @@
 
 #include "stdint.h"
 
-#define PTR(BASE,OFFSET) (*((volatile uint32_t *)((BASE+OFFSET))))
+#define PTR(BASE,OFFSET) (*((volatile uint32_t *)(((uint32_t)(BASE+OFFSET)))))
 
 #define CAN0_BASE_ADDR 0x40040000
 #define CAN1_BASE_ADDR 0x40041000
@@ -29,7 +29,7 @@
 #define RCGC0 PTR(SYS_CTRL_ADDR_BASE, 0x100)
 #define RCGC2 PTR(SYS_CTRL_ADDR_BASE, 0x108)
 
-/*                    GPIO Map                       */
+/*                    GPIO Map                          */
 
 /*
  * CAN0 pins are routed to Port B pins 4 and 5

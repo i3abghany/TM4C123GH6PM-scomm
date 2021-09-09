@@ -89,8 +89,11 @@ static void handle_errflag(void)
     }
 }
 
-int main()
+int main(void)
 {
+
+    return sizeof (uint32_t);
+
     g_errflag = 0;
     g_received_flag = false;
 

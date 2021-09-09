@@ -58,15 +58,15 @@ static void CAN_GPIO_init(enum CAN c)
  *  quanta.
  */
 
-static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
+static uint32_t get_canbit(uint32_t bitrate, uint8_t cfg_prop_time)
 {
-    float bit_time = 1.0 / bitrate;
+    float bit_time = 1.0f / (float) bitrate;
 
     /*
      * The bit time may consist of 4 to 25 time quanta.
      * bit_time = time_quantum * n
      */
-    float time_quantum = bit_time / N_TIME_QUANTA;
+    float time_quantum = bit_time / (float)N_TIME_QUANTA;
 
     /*
      * time_quantum = (BRP) / fsys
@@ -95,10 +95,10 @@ static uint32_t get_canbit(uint32_t bitrate, int8_t cfg_prop_time)
     /* tPhase1 = tPhase2 =
      *     (N_TIME_QUANTA - ((tProp / time_quantum) + (tSync / time_quantum))
      */
-    uint8_t phases_time = N_TIME_QUANTA - (sync_time + prop_time);
+    uint8_t phases_time = (uint8_t)(N_TIME_QUANTA - (sync_time + prop_time));
     uint8_t phase1_time = phases_time / 2;
     uint8_t phase2_time = phases_time / 2;
-    phase2_time += (phases_time % 2 != 0);
+    phase2_time += (phases_time % 2 != 0) ? 1 : 0;
 
     uint8_t tTSeg1 = (prop_time + phase1_time);
     uint8_t tTSeg2 = (phase2_time);
@@ -266,8 +266,8 @@ typedef struct {
  * Return value: Returns true on success. If a mangled MsgObjectType value was
  * supplied, it returns false.
  */
-static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
-        MsgObjectType type, uint32_t flags, _CANRegsValues *vals)
+static inline bool CAN_config_message_type(MsgObjectType type, uint32_t flags,
+                                           _CANRegsValues *vals)
 {
    switch (type) {
     case MSG_OBJ_TYPE_RX:
@@ -369,6 +369,7 @@ static inline bool CAN_config_message_type(uint32_t CAN_BASE_ADDR,
          * We set it to 1 so that any further ID arbitration is enabled.
          */
         *(vals->CANIF1MCTL_value) |= CANIF1MCTL_UMASK_MASK;
+        break;
 
     default:
         return false;
@@ -403,7 +404,8 @@ static inline void CAN_memcpy(void *dst, void *src, uint8_t n)
  */
 static void CAN_write_data_to_reg(uint32_t CAN_BASE_ADDR, uint8_t *data, uint8_t len)
 {
-    CAN_memcpy((void *)(CAN_BASE_ADDR + CANIF1DA1_OFFSET), data, len);
+    uint32_t data_reg = (uint64_t)(CAN_BASE_ADDR + CANIF1DA1_OFFSET);
+    CAN_memcpy((void *)data_reg, data, len);
 }
 
 /*
@@ -412,7 +414,8 @@ static void CAN_write_data_to_reg(uint32_t CAN_BASE_ADDR, uint8_t *data, uint8_t
  */
 static void CAN_read_data_from_reg(uint32_t CAN_BASE_ADDR, uint8_t *buff, uint8_t len)
 {
-    CAN_memcpy(buff, (void *)(CAN_BASE_ADDR + CANIF1DA1_OFFSET), len);
+    uint32_t data_reg = (uint64_t)(CAN_BASE_ADDR + CANIF1DA1_OFFSET);
+    CAN_memcpy(buff, (void *)data_reg, len);
 }
 
 /* An API to configure a message object with the appropriate parameters provided in `msg`.
@@ -557,7 +560,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
         &CANIF1CRQ_value
     };
 
-    if (!CAN_config_message_type(c, msg->msg_type, msg->flags, &current_vals)) {
+    if (!CAN_config_message_type(msg->msg_type, msg->flags, &current_vals)) {
         return false;
     }
 
@@ -610,7 +613,6 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
     uint32_t CANIF1MCTL_value = 0;
     uint32_t CANIF1ARB1_value = 0;
     uint32_t CANIF1ARB2_value = 0;
-    uint32_t CANIF1CRQ_value  = 0;
 
     uint32_t CAN_BASE_ADDR = (uint32_t)(c);
 
@@ -646,8 +648,8 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
 
     msg->flags = MSG_OBJ_NO_FLAGS;
 
-    bool dir_bit = CANIF1ARB2_value & CANIF1ARB2_DIR_MASK;
-    bool txrqst_bit = CANIF1MCTL_value & CANIF1CMSK_TXRQST_MASK;
+    bool dir_bit = (CANIF1ARB2_value & CANIF1ARB2_DIR_MASK) != 0;
+    bool txrqst_bit = (CANIF1MCTL_value & CANIF1CMSK_TXRQST_MASK) != 0;
 
     /*
      * For RX remote frames, TXRQST is reset and DIR is set.
@@ -742,6 +744,8 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
         /* We do this to indicate that there were no data read. */
         msg->data_len = 0;
     }
+
+    return true;
 }
 
 /*
@@ -792,4 +796,6 @@ bool CAN_interrupt_enable(enum CAN c, uint32_t interrupt_masks)
     }
 
     PTR(CAN_BASE_ADDR, CANCTL_OFFSET) |= interrupt_masks;
+
+    return true;
 }
