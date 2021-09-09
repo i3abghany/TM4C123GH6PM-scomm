@@ -1,7 +1,7 @@
 #ifndef _CAN_H
 #define _CAN_H
 
-#include <stdbool.h>
+#include "stdbool.h"
 #include "CANMap.h"
 
 #ifndef F_SYS_CLOCK
