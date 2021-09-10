@@ -452,6 +452,15 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
     }
 
     /*
+     * This API is also used to potentially re-configure an already-set-up
+     * message object, this means that the message object with `msg->msg_obj` ID
+     * may have the `MSGVAL` bit set indicating a valid message. We
+     * scrutinizingly reset it up-front.
+     */
+
+    CAN_remove_message_object(c, msg->obj_id);
+
+    /*
      * Since this is a message object configuration, we're writting to the
      * messsage object. This means that the WRNRD bit must be set.
      *
