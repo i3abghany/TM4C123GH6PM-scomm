@@ -14,8 +14,22 @@ enum CAN {
 };
 
 typedef struct {
+    /* Which CAN controller to configure? */
     enum CAN can_num;
+
+    /* The desired bit-rate. Can be up-to 1000000 bps. */
     uint32_t bit_rate;
+
+    /*
+     * The number of time quanta to split one bit time to. Typically ranges from
+     * 4 to 25. This can be left as 0 for the default number of time quanta.
+     */
+    uint8_t n_time_quanta;
+
+    /*
+     * The propagation-time, this is used to configure that bit-time
+     * calculations and can be set to 0 to use the default value.
+     */
     uint8_t prop_time;
 } CANConfig;
 

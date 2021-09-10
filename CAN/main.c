@@ -98,9 +98,14 @@ int main(void)
     g_received_flag = false;
 
     CANConfig cfg = {
-        .bit_rate = 1000000,
         .can_num = CAN0,
-        .prop_time = 2,
+        .bit_rate = 1000000,
+
+        /* Use the default number of time quanta. */
+        .n_time_quanta = 0,
+
+        /* Use the default propagation time. */
+        .prop_time = 0,
     };
 
     CAN_init(&cfg);
@@ -114,7 +119,7 @@ int main(void)
     config_receive_obj();
     CAN_config_message(CAN0, &receive_message_obj);
 
-    while (1) {
+    while (true) {
         if (g_received_flag) {
             CAN_get_message_object(CAN0, &receive_message_obj);
             /*

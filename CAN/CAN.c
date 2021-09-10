@@ -58,15 +58,24 @@ static void CAN_GPIO_init(enum CAN c)
  *  quanta.
  */
 
-static uint32_t get_canbit(uint32_t bitrate, uint8_t cfg_prop_time)
+static uint32_t get_canbit(uint32_t bitrate, uint8_t n_tq,
+                           uint8_t cfg_prop_time)
 {
     float bit_time = 1.0f / (float) bitrate;
+
+    /*
+     * If the number of time quanta is left as 0, we use the default value
+     * N_TIME_QUANTA.
+     */
+    if (n_tq == 0) {
+        n_tq = N_TIME_QUANTA;
+    }
 
     /*
      * The bit time may consist of 4 to 25 time quanta.
      * bit_time = time_quantum * n
      */
-    float time_quantum = bit_time / (float)N_TIME_QUANTA;
+    float time_quantum = bit_time / (float)n_tq;
 
     /*
      * time_quantum = (BRP) / fsys
@@ -86,16 +95,19 @@ static uint32_t get_canbit(uint32_t bitrate, uint8_t cfg_prop_time)
 
     /*
      * With 1 time quantum for Sync, and at least 2 for Phase1 and Phase2, we
-     * must have prop_time at least as small as N_TIME_QUANTA - 3.
+     * must have prop_time at least as small as `n_tq` - 3.
+     *
+     * We return - on (n_tq - 3) > n_tq also to accomodate for the under-flow of
+     * (n_tq - 3).
      */
-    if (cfg_prop_time > N_TIME_QUANTA - 3) {
+    if (n_tq - 3 > n_tq || cfg_prop_time > n_tq - 3) {
         return 0;
     }
 
     /* tPhase1 = tPhase2 =
-     *     (N_TIME_QUANTA - ((tProp / time_quantum) + (tSync / time_quantum))
+     *     (n_tq - ((tProp / time_quantum) + (tSync / time_quantum))
      */
-    uint8_t phases_time = (uint8_t)(N_TIME_QUANTA - (sync_time + prop_time));
+    uint8_t phases_time = (uint8_t)(n_tq - (sync_time + prop_time));
     uint8_t phase1_time = phases_time / 2;
     uint8_t phase2_time = phases_time / 2;
     phase2_time += (phases_time % 2 != 0) ? 1 : 0;
@@ -121,7 +133,6 @@ static uint32_t get_canbit(uint32_t bitrate, uint8_t cfg_prop_time)
     tTSeg2--;
     tSJW--;
 
-    // return (tTSeg2 << 12) | (tTSeg1 << 8) | (tSJW << 6) | (prescaler);
     return CONSTRUCT_CANBIT(tTSeg2, tTSeg1, tSJW, tBRP);
 }
 
@@ -158,7 +169,8 @@ bool CAN_init(CANConfig *cfg)
 
     /* Set the CAN Bit Timing CANBIT register */
     PTR(CAN_BASE_ADDR, CANCTL_OFFSET) |= CANCTL_CCE_MASK;
-    uint32_t canbit = get_canbit(cfg->bit_rate, cfg->prop_time);
+    uint32_t canbit = get_canbit(cfg->bit_rate, cfg->n_time_quanta,
+                                 cfg->prop_time);
 
     if (canbit == 0) {
         return false;
