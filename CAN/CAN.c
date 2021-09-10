@@ -183,9 +183,25 @@ bool CAN_init(CANConfig *cfg)
     PTR(CAN_BASE_ADDR, CANCTL_OFFSET) |= CANCTL_CCE_MASK;
     uint32_t canbit = get_canbit(cfg->bit_rate, cfg->n_time_quanta,
                                  cfg->prop_time);
+    PTR(CAN_BASE_ADDR, CANCTL_OFFSET) &= ~CANCTL_CCE_MASK;
+
 
     if (canbit == 0) {
         return false;
+    }
+
+    bool test_mode = cfg->loopback || cfg->basic || cfg->silent;
+
+    if (test_mode) {
+        PTR(CAN_BASE_ADDR, CANCTL_OFFSET) |= CANCTL_TEST_MASK;
+    }
+
+    if (cfg->loopback) {
+        PTR(CAN_BASE_ADDR, CANTST_OFFSET) |= CANTST_LBACK_MASK;
+    } else if (cfg->basic) {
+        PTR(CAN_BASE_ADDR, CANTST_OFFSET) |= CANTST_BASIC_MASK;
+    } else if (cfg->silent) {
+        PTR(CAN_BASE_ADDR, CANTST_OFFSET) |= CANTST_SILENT_MASK;
     }
 
     PTR(CAN_BASE_ADDR, CANBIT_OFFSET) |= canbit;

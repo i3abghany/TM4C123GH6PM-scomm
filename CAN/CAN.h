@@ -20,6 +20,15 @@ typedef struct {
     /* The desired bit-rate. Can be up-to 1000000 bps. */
     uint32_t bit_rate;
 
+    /* Enable the loopback mode. */
+    bool loopback;
+
+    /* Enable the silent mode. */
+    bool silent;
+
+    /* Enable the basic mode. */
+    bool basic;
+
     /*
      * The number of time quanta to split one bit time to. Typically ranges from
      * 4 to 25. This can be left as 0 for the default number of time quanta.
@@ -88,13 +97,19 @@ typedef struct {
 #define CAN0_PCTL ((8 << 16) | (8 << 20))
 #define CAN1_PCTL ((8 <<  0) | (8 <<  4))
 
-/*             CANCTL fields and flags.              */
+/*              CANCTL fields and flags.             */
 
 #define CANCTL_INIT_MASK ((uint32_t)(1 << 0))
 #define CANCTL_IE_MASK   ((uint32_t)(1 << 1))
 #define CANCTL_SIE_MASK  ((uint32_t)(1 << 2))
 #define CANCTL_EIE_MASK  ((uint32_t)(1 << 3))
 #define CANCTL_CCE_MASK  ((uint32_t)(1 << 6))
+#define CANCTL_TEST_MASK ((uint32_t)(1 << 7))
+
+/*              CANTST fields and flags.             */
+#define CANTST_BASIC_MASK  ((uint32_t)(1 << 2))
+#define CANTST_SILENT_MASK ((uint32_t)(1 << 3))
+#define CANTST_LBACK_MASK  ((uint32_t)(1 << 4))
 
 /*              CANBIT fields and flags.             */
 #define CANBIT_SEG2_POS 12

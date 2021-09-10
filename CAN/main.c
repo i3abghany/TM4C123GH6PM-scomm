@@ -101,6 +101,10 @@ int main(void)
         .can_num = CAN0,
         .bit_rate = 1000000,
 
+        .loopback = false,
+        .silent = false,
+        .basic = false,
+
         /* Use the default number of time quanta. */
         .n_time_quanta = 0,
 
