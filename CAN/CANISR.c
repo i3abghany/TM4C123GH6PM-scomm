@@ -1,8 +1,8 @@
 #include "CAN.h"
 
 extern uint32_t g_errflag;
-extern const uint32_t g_receive_obj_id;
-extern const uint32_t g_transmit_obj_id;
+extern const uint8_t g_receive_obj_id;
+extern const uint8_t g_transmit_obj_id;
 extern bool g_received_flag;
 
 /*

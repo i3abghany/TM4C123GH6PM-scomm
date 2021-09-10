@@ -29,7 +29,7 @@ typedef enum {
 
 typedef struct {
     /* Controller message object ID. */
-    uint32_t obj_id;
+    uint8_t obj_id;
 
     /* 11- or 29-bit message identifier (sent in the frame). */
     uint32_t msg_id;

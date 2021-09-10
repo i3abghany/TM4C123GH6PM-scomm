@@ -1,8 +1,8 @@
 #include "CAN.h"
 
 volatile uint32_t g_errflag;
-volatile const uint32_t g_receive_obj_id = 1;
-volatile const uint32_t g_transmit_obj_id = 2;
+volatile const uint8_t g_receive_obj_id = 1;
+volatile const uint8_t g_transmit_obj_id = 2;
 volatile bool g_received_flag;
 
 const uint32_t transmit_message_id = 1;
@@ -122,7 +122,7 @@ int main(void)
              * `receive_message_object.
              */
 
-            if (receive_message_obj.flags | MSG_OBJ_DATA_LOSS) {
+            if (receive_message_obj.flags & MSG_OBJ_DATA_LOSS) {
                 /*
                  * The data could not be fetched by the CAN bus and is lost in
                  * the process of transmission/receipt.
