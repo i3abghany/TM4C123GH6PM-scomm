@@ -782,6 +782,13 @@ bool CAN_remove_message_object(enum CAN c, uint8_t obj_id)
 
     PTR(CAN_BASE_ADDR, CANIF1ARB2_OFFSET) &= ~CANIF1ARB2_MSGVAL_MASK;
 
+    /*
+     * Configure the `MNUM` field of the register `CANIF1CRQ` to the
+     * in-consideration message. This indicates, in conjunction with the
+     * resetting of the `MSGVAL` field, to an invalid message object.
+     */
+    PTR(CAN_BASE_ADDR, CANIF1CRQ_OFFSET) |= (obj_id & CANIF1CRQ_MNUM_MASK);
+
     return true;
 }
 
