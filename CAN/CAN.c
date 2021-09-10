@@ -31,7 +31,7 @@ static void CAN_GPIO_init(enum CAN c)
 }
 
 /*
- * Calculate the CANBIT register value for a particular bitrate and propagation
+ * Calculate the CANBIT register value for a particular bit-rate and propagation
  * time.
  *
  * In the CAN specification, bit-time is divided into four parts.
@@ -48,7 +48,7 @@ static void CAN_GPIO_init(enum CAN c)
  *      Time quantum = F_CLK / BRP.
  *
  *  Where F_CLK is the routed clock to the CAN controller.
- *  BRP is the bit-rate prescalar.
+ *  BRP is the bit-rate pre-scalar.
  *
  *  * Synchronization segment is fixed at one time quantum.
  *  * Propagation segment is parameterized by the physical system delay.
@@ -158,6 +158,18 @@ void CAN_enable(enum CAN c)
     PTR(CAN_BASE_ADDR, CANCTL_OFFSET) &= ~CANCTL_INIT_MASK;
 }
 
+/*
+ * An API for initializing a CAN controller. Which CAN controller to initialize
+ * is a parameter in the `CANConfig` struct. The initialization also takes care
+ * of initializing the GPIO pins associated with the selected CAN controller.
+ *
+ * Before initialization, the CAN controller is disabled by asserting the `INIT`
+ * bit in the `CANCTL` register. Entering the initialization state enables
+ * wrting to pre-run configuration registers.
+ *
+ * Return value: Returns true on successful initialization. Returns false if the
+ * bit-rate parameters cannot be used to form a conforming bit-time.
+ */
 bool CAN_init(CANConfig *cfg)
 {
     CAN_GPIO_init(cfg->can_num);
@@ -184,6 +196,12 @@ bool CAN_init(CANConfig *cfg)
     return true;
 }
 
+/*
+ * An internal utility that asserts the options available in the CANIFCMSK
+ * register. The CANIF1CMSK could be, more easily, OR'd with the `options`
+ * parameter. But it's left verbose as-is to be like the data-sheet description
+ * as much as possible.
+ */
 static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t options)
 {
     /* 1. In the CAN IFn Command Mask (CANIFnCMASK) register: */
@@ -201,7 +219,8 @@ static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t option
 
     /*
      * specify whether to transfer the IDMASK, DIR, and MXTD of the message
-     * object into the CAN IFn registers using the MASK bit
+     * object into the CAN IFn registers (or the other way around) using the
+     * MASK bit
      */
     if (options & CANIF1CMSK_MASK_MASK) {
         PTR(CAN_BASE_ADDR, CANIF1CMSK_OFFSET) |= CANIF1CMSK_MASK_MASK;
@@ -209,7 +228,8 @@ static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t option
 
     /*
      * Specify whether to transfer the ID, DIR, XTD, and MSGVAL of the message
-     * object into the interface registers using the ARB bit
+     * object into the interface registers (or the other way around) using the
+     * ARB bit
      */
     if (options & CANIF1CMSK_ARB_MASK) {
         PTR(CAN_BASE_ADDR, CANIF1CMSK_OFFSET) |= CANIF1CMSK_ARB_MASK;
@@ -217,7 +237,7 @@ static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t option
 
     /*
      * Specify whether to transfer the control bits into the interface registers
-     * using the CONTROL bit
+     * (or the other way around) using the CONTROL bit
      */
     if (options & CANIF1CMSK_CONTROL_MASK) {
         PTR(CAN_BASE_ADDR, CANIF1CMSK_OFFSET) |= CANIF1CMSK_CONTROL_MASK;
@@ -240,7 +260,8 @@ static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t option
     }
 
     /*
-     * Specify which bits to transfer using the DATAA and DATAB bits
+     * Specify which bits to transfer using the DATAA and DATAB bits to the
+     * interface refisters from the message object (or the other way around)
      */
     if (options & CANIF1CMSK_DATAA_MASK) {
         PTR(CAN_BASE_ADDR, CANIF1CMSK_OFFSET) |= CANIF1CMSK_DATAA_MASK;
@@ -251,7 +272,8 @@ static inline void CAN_config_CANIF1CMSK(uint32_t CAN_BASE_ADDR, uint32_t option
     }
 }
 
-/* Must we assert the TXRQST bit or not? It must be asserted in case of a
+/*
+ * Must we assert the TXRQST bit or not? It must be asserted in case of a
  * transmit-remote message object, a data-transmit message object, or an
  * auto-transmission of a remote frame.
  */
@@ -272,10 +294,10 @@ typedef struct {
 } _CANRegsValues;
 
 /* Internal helper for configuring the CAN controller interface registers
- * according to the message type, since different configurations must be asserted
- * for different message types.
+ * according to the message type, since different configurations must be
+ * asserted for different message types.
  *
- * Return value: Returns true on success. If a mangled MsgObjectType value was
+ * Return value: Returns true on success. If a mangled `MsgObjectType` value was
  * supplied, it returns false.
  */
 static inline bool CAN_config_message_type(MsgObjectType type, uint32_t flags,
@@ -359,8 +381,6 @@ static inline bool CAN_config_message_type(MsgObjectType type, uint32_t flags,
         * message object is set. The rest of the message object remains
         * unchanged, and the controller automatically transfers the data in the
         * message object as soon as possible
-        *
-        *
         */
 
         /*
@@ -430,7 +450,9 @@ static void CAN_read_data_from_reg(uint32_t CAN_BASE_ADDR, uint8_t *buff, uint8_
     CAN_memcpy(buff, (void *)data_reg, len);
 }
 
-/* An API to configure a message object with the appropriate parameters provided in `msg`.
+/*
+ * An API to configure a message object with the appropriate parameters provided
+ * in `msg`.
  *
  * A message object can be configured with acceptance filtering factors so that
  * the CAN controller does not accept any messages but for the ones that pass
@@ -526,7 +548,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
      * Use the MXTD and MDIR bits to specify whether to use XTD and DIR for
      * acceptance filtering.
      *
-     * This specifies full, extended ID and direction filtering, respectively.
+     * These specifies extended ID and direction filtering, respectively.
      */
     if ((msg->flags & MSG_OBJ_USE_DIR_FILTER) == MSG_OBJ_USE_DIR_FILTER) {
         CANIF1MSK2_value |= CANIF1MSK2_MDIR_MASK;
@@ -597,7 +619,7 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
 
     /*
      * Program the number of the message object to be transmitted in the MNUM
-     * field in the CAN IFn Command Request (CANIFnCRQ)
+     * field in the CANIFn Command Request (CANIFnCRQ) register.
      */
     CANIF1CRQ_value |= (msg->obj_id & CANIF1CRQ_MNUM_MASK);
 
@@ -621,7 +643,8 @@ bool CAN_config_message(enum CAN c, CANMsgObject *msg)
     return true;
 }
 
-/* An API to fetch the data out from a message objec, and subsequently populate
+/*
+ * An API to fetch the data out from a message objec, and subsequently populate
  * `msg` with the data.
  *
  * Return value: Returns true on success. When a wrong message object ID is
@@ -648,8 +671,8 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
      * only reading from the message object.
      *
      * That combination transfers the whole received message from the message
-     * RAM into the Message Buffer registers (CANIFnMSKn, CANIFnARBn, and
-     * CANIFnMCTL)
+     * RAM into the Message Buffer interface registers (CANIFnMSKn, CANIFnARBn,
+     * and CANIFnMCTL)
      */
     CAN_config_CANIF1CMSK(CAN_BASE_ADDR, CANIF1CMSK_DATAA_MASK  |
                                          CANIF1CMSK_DATAB_MASK  |
@@ -687,7 +710,8 @@ bool CAN_get_message_object(enum CAN c, CANMsgObject *msg)
      * set; the CPU has lost a message. This bit is only valid for message
      * objects when the DIR bit in the CANIFnARB2 register is clear (receive)
      */
-    if (!(CANIF1ARB2_value & CANIF1ARB2_DIR_MASK) && CANIF1ARB2_value & CANIF1MCTL_MSGLST_MASK) {
+    if (!(CANIF1ARB2_value & CANIF1ARB2_DIR_MASK) &&
+        (CANIF1ARB2_value & CANIF1MCTL_MSGLST_MASK)) {
         msg->flags |= MSG_OBJ_DATA_LOSS;
     }
 
@@ -806,10 +830,11 @@ bool CAN_remove_message_object(enum CAN c, uint8_t obj_id)
 
 /*
  * Enable certain interrupts for a specific CAN controller. The available
- * interrupt masks are CAN_INTR_GLOBAL, CAN_INTR_STATUS, and CAN_INTR_ERROR.
+ * interrupt masks are `CAN_INTR_GLOBAL`, `CAN_INTR_STATUS`, and
+ * `CAN_INTR_ERROR`.
  *
- * A utility definition CAN_INTR_ALL that comprises the value of the three masks
- * is available to be used by the API user.
+ * A utility definition `CAN_INTR_ALL` that comprises the value of the three
+ * masks is available to be used by the API user.
  *
  * Return value: Returns true on successful enabling of the specified
  * interrupts. Returns false if undefined interrupts are requested to be
